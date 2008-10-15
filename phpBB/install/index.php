@@ -230,6 +230,14 @@ include(PHPBB_ROOT_PATH . 'language/' . $language . '/acp/board.' . PHP_EXT);
 include(PHPBB_ROOT_PATH . 'language/' . $language . '/install.' . PHP_EXT);
 include(PHPBB_ROOT_PATH . 'language/' . $language . '/posting.' . PHP_EXT);
 
+// usually we would need every single constant here - and it would be consistent. For 3.0.x, use a dirty hack... :(
+
+// Define needed constants
+define('CHMOD_ALL', 7);
+define('CHMOD_READ', 4);
+define('CHMOD_WRITE', 2);
+define('CHMOD_EXECUTE', 1);
+
 $mode = request_var('mode', 'overview');
 $sub = request_var('sub', '');
 
@@ -264,9 +272,6 @@ $config = array(
 
 $template->set_custom_template('../adm/style', 'admin');
 $template->assign_var('T_TEMPLATE_PATH', '../adm/style');
-
-// the acp template is never stored in the database
-$user->theme['template_storedb'] = false;
 
 $install = new module();
 

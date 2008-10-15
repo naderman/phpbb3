@@ -65,7 +65,7 @@ class mcp_reports
 		{
 			case 'report_details':
 
-				$user->add_lang('posting');
+				$user->add_lang(array('posting', 'viewforum', 'viewtopic'));
 
 				$post_id = request_var('p', 0);
 
@@ -200,6 +200,7 @@ class mcp_reports
 					'U_MCP_USER_NOTES'			=> append_sid('mcp', 'i=notes&amp;mode=user_notes&amp;u=' . $post_info['user_id']),
 					'U_MCP_WARN_REPORTER'		=> ($auth->acl_get('m_warn')) ? append_sid('mcp', 'i=warn&amp;mode=warn_user&amp;u=' . $report['user_id']) : '',
 					'U_MCP_WARN_USER'			=> ($auth->acl_get('m_warn')) ? append_sid('mcp', 'i=warn&amp;mode=warn_user&amp;u=' . $post_info['user_id']) : '',
+					'U_VIEW_FORUM'				=> append_sid('viewforum', 'f=' . $post_info['forum_id']),
 					'U_VIEW_POST'				=> append_sid('viewtopic', 'f=' . $post_info['forum_id'] . '&amp;p=' . $post_info['post_id'] . '#p' . $post_info['post_id']),
 					'U_VIEW_TOPIC'				=> append_sid('viewtopic', 'f=' . $post_info['forum_id'] . '&amp;t=' . $post_info['topic_id']),
 
@@ -554,7 +555,8 @@ function close_report($report_id_list, $mode, $action)
 				{
 					$sql = 'UPDATE ' . TOPICS_TABLE . '
 						SET topic_reported = 0
-						WHERE ' . $db->sql_in_set('topic_id', $close_report_topics);
+						WHERE ' . $db->sql_in_set('topic_id', $close_report_topics) . '
+							OR ' . $db->sql_in_set('topic_moved_id', $close_report_topics);
 					$db->sql_query($sql);
 				}
 			}
@@ -633,7 +635,7 @@ function close_report($report_id_list, $mode, $action)
 		$return_topic = '';
 		if (sizeof($topic_ids == 1))
 		{
-			$return_topic = sprintf($user->lang['RETURN_TOPIC'], '<a href="' . append_sid('viewtopic', 't=' . current($topic_ids) . 'f=' . current($forum_ids)) . '">', '</a>') . '<br /><br />';
+			$return_topic = sprintf($user->lang['RETURN_TOPIC'], '<a href="' . append_sid('viewtopic', 't=' . current($topic_ids) . '&amp;f=' . current($forum_ids)) . '">', '</a>') . '<br /><br />';
 		}
 		
 		trigger_error($user->lang[$success_msg] . '<br /><br />' . $return_forum . $return_topic . sprintf($user->lang['RETURN_PAGE'], "<a href=\"$redirect\">", '</a>'));

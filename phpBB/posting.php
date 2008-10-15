@@ -45,7 +45,13 @@ $mode		= ($delete && !$preview && !$refresh && $submit) ? 'delete' : request_var
 $error = $post_data = array();
 $current_time = time();
 
-
+if ($config['enable_post_confirm'] && !$user->data['is_registered'])
+{
+	include(PHPBB_ROOT_PATH . 'includes/captcha/captcha_factory.' . PHP_EXT);
+	$captcha = phpbb_captcha_factory::get_instance($config['captcha_plugin']);
+	$captcha->init(CONFIRM_POST);
+}
+	
 // Was cancel pressed? If so then redirect to the appropriate page
 if ($cancel || ($current_time - $lastclick < 2 && $submit))
 {
@@ -114,7 +120,7 @@ switch ($mode)
 		else
 		{
 			upload_popup();
-			exit;
+			return;
 		}
 	break;
 
@@ -145,7 +151,7 @@ if (!$post_data)
 if ($mode == 'popup')
 {
 	upload_popup($post_data['forum_style']);
-	exit;
+	return;
 }
 
 $user->setup(array('posting', 'mcp', 'viewtopic'), $post_data['forum_style']);
@@ -276,13 +282,14 @@ if ($mode == 'edit' && !$auth->acl_get('m_edit', $forum_id))
 if ($mode == 'delete')
 {
 	handle_post_delete($forum_id, $topic_id, $post_id, $post_data);
-	exit;
+	return;
 }
 
 // Handle bump mode...
 if ($mode == 'bump')
 {
-	if ($bump_time = bump_topic_allowed($forum_id, $post_data['topic_bumped'], $post_data['topic_last_post_time'], $post_data['topic_poster'], $post_data['topic_last_poster_id']))
+	if ($bump_time = bump_topic_allowed($forum_id, $post_data['topic_bumped'], $post_data['topic_last_post_time'], $post_data['topic_poster'], $post_data['topic_last_poster_id'])
+	   && check_link_hash(request_var('hash', ''),"topic_{$post_data['topic_id']}"))
 	{
 		$db->sql_transaction('begin');
 
@@ -740,21 +747,10 @@ if ($submit || $preview || $refresh)
 
 	if ($config['enable_post_confirm'] && !$user->data['is_registered'] && in_array($mode, array('quote', 'post', 'reply')))
 	{
-		$confirm_id = request_var('confirm_id', '');
-		$confirm_code = request_var('confirm_code', '');
-
-		$sql = 'SELECT code
-			FROM ' . CONFIRM_TABLE . "
-			WHERE confirm_id = '" . $db->sql_escape($confirm_id) . "'
-				AND session_id = '" . $db->sql_escape($user->session_id) . "'
-				AND confirm_type = " . CONFIRM_POST;
-		$result = $db->sql_query($sql);
-		$confirm_row = $db->sql_fetchrow($result);
-		$db->sql_freeresult($result);
-
-		if (empty($confirm_row['code']) || strcasecmp($confirm_row['code'], $confirm_code) !== 0)
+		$vc_response = $captcha->validate();
+		if ($vc_response)
 		{
-			$error[] = $user->lang['CONFIRM_CODE_WRONG'];
+			$error[] = $vc_response;
 		}
 		else
 		{
@@ -998,10 +994,12 @@ if ($submit || $preview || $refresh)
 			}
 
 			$redirect_url = submit_post($mode, $post_data['post_subject'], $post_data['username'], $post_data['topic_type'], $poll, $data, $update_message);
-			$post_need_approval = (!$auth->acl_get('f_noapprove', $data['forum_id']) && !$auth->acl_get('m_approve', $data['forum_id'])) ? true : false;
-
-			// If the post need approval we will wait a lot longer.
-			if ($post_need_approval)
+			if ($config['enable_post_confirm'] && !$user->data['is_registered'] && in_array($mode, array('quote', 'post', 'reply')))
+			{
+				$captcha->reset();
+			}
+			// Check the permissions for post approval, as well as the queue trigger where users are put on approval with a post count lower than specified. Moderators are not affected.
+			if (($config['enable_queue_trigger'] && $user->data['user_posts'] < $config['queue_trigger_posts'] && !$auth->acl_get('m_approve', $data['forum_id'])) || !$auth->acl_get('f_noapprove', $data['forum_id']))
 			{
 				meta_refresh(10, $redirect_url);
 				$message = ($mode == 'edit') ? $user->lang['POST_EDITED_MOD'] : $user->lang['POST_STORED_MOD'];
@@ -1220,34 +1218,11 @@ generate_forum_rules($post_data);
 
 if ($config['enable_post_confirm'] && !$user->data['is_registered'] && $solved_captcha === false && ($mode == 'post' || $mode == 'reply' || $mode == 'quote'))
 {
-	// Show confirm image
-	$sql = 'DELETE FROM ' . CONFIRM_TABLE . "
-		WHERE session_id = '" . $db->sql_escape($user->session_id) . "'
-			AND confirm_type = " . CONFIRM_POST;
-	$db->sql_query($sql);
-
-	// Generate code
-	$code = gen_rand_string(mt_rand(5, 8));
-	$confirm_id = md5(unique_id($user->ip));
-	$seed = hexdec(substr(unique_id(), 4, 10));
-
-	// compute $seed % 0x7fffffff
-	$seed -= 0x7fffffff * floor($seed / 0x7fffffff);
-
-	$sql = 'INSERT INTO ' . CONFIRM_TABLE . ' ' . $db->sql_build_array('INSERT', array(
-		'confirm_id'	=> (string) $confirm_id,
-		'session_id'	=> (string) $user->session_id,
-		'confirm_type'	=> (int) CONFIRM_POST,
-		'code'			=> (string) $code,
-		'seed'			=> (int) $seed)
-	);
-	$db->sql_query($sql);
+	$captcha->reset();
 
 	$template->assign_vars(array(
 		'S_CONFIRM_CODE'			=> true,
-		'CONFIRM_ID'				=> $confirm_id,
-		'CONFIRM_IMAGE'				=> '<img src="' . append_sid('ucp', 'mode=confirm&amp;id=' . $confirm_id . '&amp;type=' . CONFIRM_POST) . '" alt="" title="" />',
-		'L_POST_CONFIRM_EXPLAIN'	=> sprintf($user->lang['POST_CONFIRM_EXPLAIN'], '<a href="mailto:' . htmlspecialchars($config['board_contact']) . '">', '</a>'),
+		'CONFIRM'					=> $captcha->get_template(),
 	));
 }
 
@@ -1258,13 +1233,10 @@ $s_hidden_fields .= ($draft_id || isset($_REQUEST['draft_loaded'])) ? '<input ty
 // Add the confirm id/code pair to the hidden fields, else an error is displayed on next submit/preview
 if ($solved_captcha !== false)
 {
-	$s_hidden_fields .= build_hidden_fields(array(
-		'confirm_id'		=> request_var('confirm_id', ''),
-		'confirm_code'		=> request_var('confirm_code', ''))
-	);
+	$s_hidden_fields .= build_hidden_fields($captcha->get_hidden_fields());
 }
 
-$form_enctype = (@ini_get('file_uploads') == '0' || strtolower(@ini_get('file_uploads')) == 'off' || @ini_get('file_uploads') == '0' || !$config['allow_attachments'] || !$auth->acl_get('u_attach') || !$auth->acl_get('f_attach', $forum_id)) ? '' : ' enctype="multipart/form-data"';
+$form_enctype = (@ini_get('file_uploads') == '0' || strtolower(@ini_get('file_uploads')) == 'off' || !$config['allow_attachments'] || !$auth->acl_get('u_attach') || !$auth->acl_get('f_attach', $forum_id)) ? '' : ' enctype="multipart/form-data"';
 add_form_key('posting');
 
 
@@ -1302,7 +1274,7 @@ $template->assign_vars(array(
 	'S_EDIT_REASON'				=> ($mode == 'edit' && $auth->acl_get('m_edit', $forum_id)) ? true : false,
 	'S_DISPLAY_USERNAME'		=> (!$user->data['is_registered'] || ($mode == 'edit' && $post_data['poster_id'] == ANONYMOUS)) ? true : false,
 	'S_SHOW_TOPIC_ICONS'		=> $s_topic_icons,
-	'S_DELETE_ALLOWED'			=> ($mode == 'edit' && (($post_id == $post_data['topic_last_post_id'] && $post_data['poster_id'] == $user->data['user_id'] && $auth->acl_get('f_delete', $forum_id)) || $auth->acl_get('m_delete', $forum_id))) ? true : false,
+	'S_DELETE_ALLOWED'			=> ($mode == 'edit' && (($post_id == $post_data['topic_last_post_id'] && $post_data['poster_id'] == $user->data['user_id'] && $auth->acl_get('f_delete', $forum_id) && !$post_data['post_edit_locked'] && ($post_data['post_time'] > time() - ($config['edit_time'] * 60) || !$config['edit_time'])) || $auth->acl_get('m_delete', $forum_id))) ? true : false,
 	'S_BBCODE_ALLOWED'			=> $bbcode_status,
 	'S_BBCODE_CHECKED'			=> ($bbcode_checked) ? ' checked="checked"' : '',
 	'S_SMILIES_ALLOWED'			=> $smilies_status,
@@ -1354,12 +1326,11 @@ if (($mode == 'post' || ($mode == 'edit' && $post_id == $post_data['topic_first_
 	);
 }
 
+// Show attachment box for adding attachments if true
+$allowed = ($auth->acl_get('f_attach', $forum_id) && $auth->acl_get('u_attach') && $config['allow_attachments'] && $form_enctype);
+
 // Attachment entry
-// Not using acl_gets here, because it is using OR logic
-if ($auth->acl_get('f_attach', $forum_id) && $auth->acl_get('u_attach') && $config['allow_attachments'] && $form_enctype)
-{
-	posting_gen_attachment_entry($attachment_data, $filename_data);
-}
+posting_gen_attachment_entry($attachment_data, $filename_data, $allowed);
 
 // Output page ...
 page_header($page_title);
@@ -1411,10 +1382,10 @@ function upload_popup($forum_style = 0)
 */
 function handle_post_delete($forum_id, $topic_id, $post_id, &$post_data)
 {
-	global $user, $db, $auth;
+	global $user, $db, $auth, $config;
 
 	// If moderator removing post or user itself removing post, present a confirmation screen
-	if ($auth->acl_get('m_delete', $forum_id) || ($post_data['poster_id'] == $user->data['user_id'] && $user->data['is_registered'] && $auth->acl_get('f_delete', $forum_id) && $post_id == $post_data['topic_last_post_id']))
+	if ($auth->acl_get('m_delete', $forum_id) || ($post_data['poster_id'] == $user->data['user_id'] && $user->data['is_registered'] && $auth->acl_get('f_delete', $forum_id) && $post_id == $post_data['topic_last_post_id'] && !$post_data['post_edit_locked'] && ($post_data['post_time'] > time() - ($config['edit_time'] * 60) || !$config['edit_time'])))
 	{
 		$s_hidden_fields = build_hidden_fields(array(
 			'p'		=> $post_id,

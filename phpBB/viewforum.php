@@ -113,7 +113,7 @@ if ($forum_data['forum_type'] == FORUM_LINK && $forum_data['forum_link'])
 
 	// We redirect to the url. The third parameter indicates that external redirects are allowed.
 	redirect($forum_data['forum_link'], false, true);
-	exit;
+	return;
 }
 
 // Build navigation links
@@ -173,8 +173,11 @@ if (!$auth->acl_get('f_read', $forum_id))
 // Handle marking posts
 if ($mark_read == 'topics')
 {
-	markread('topics', $forum_id);
-
+	$token = request_var('hash', '');
+	if (check_link_hash($token, 'global'))
+	{
+		markread('topics', $forum_id);
+	}
 	$redirect_url = append_sid('viewforum', 'f=' . $forum_id);
 	meta_refresh(3, $redirect_url);
 
@@ -200,7 +203,7 @@ $s_watching_forum = array(
 	'is_watching'	=> false,
 );
 
-if (($config['email_enable'] || $config['jab_enable']) && $config['allow_forum_notify'] && $auth->acl_get('f_subscribe', $forum_id))
+if (($config['email_enable'] || $config['jab_enable']) && $config['allow_forum_notify'] && $forum_data['forum_type'] == FORUM_POST && $auth->acl_get('f_subscribe', $forum_id))
 {
 	$notify_status = (isset($forum_data['notify_status'])) ? $forum_data['notify_status'] : NULL;
 	watch_topic_forum('forum', $s_watching_forum, $user->data['user_id'], $forum_id, 0, $notify_status);
@@ -303,11 +306,11 @@ $template->assign_vars(array(
 	'S_SINGLE_MODERATOR'	=> (!empty($moderators[$forum_id]) && sizeof($moderators[$forum_id]) > 1) ? false : true,
 	'S_IS_LOCKED'			=> ($forum_data['forum_status'] == ITEM_LOCKED) ? true : false,
 	'S_VIEWFORUM'			=> true,
-
+	
 	'U_MCP'				=> ($auth->acl_get('m_', $forum_id)) ? append_sid('mcp', "f=$forum_id&amp;i=main&amp;mode=forum_view", true, $user->session_id) : '',
 	'U_POST_NEW_TOPIC'	=> ($auth->acl_get('f_post', $forum_id) || $user->data['user_id'] == ANONYMOUS) ? append_sid('posting', 'mode=post&amp;f=' . $forum_id) : '',
 	'U_VIEW_FORUM'		=> append_sid('viewforum', "f=$forum_id" . ((strlen($u_sort_param)) ? "&amp;$u_sort_param" : '') . "&amp;start=$start"),
-	'U_MARK_TOPICS'		=> ($user->data['is_registered'] || $config['load_anon_lastread']) ? append_sid('viewforum', "f=$forum_id&amp;mark=topics") : '',
+	'U_MARK_TOPICS'		=> ($user->data['is_registered'] || $config['load_anon_lastread']) ? append_sid('viewforum', 'hash=' . generate_link_hash('global') . "&amp;f=$forum_id&amp;mark=topics") : '',
 ));
 
 // Grab icons
@@ -503,6 +506,7 @@ if (sizeof($shadow_topic_list))
 			'topic_moved_id'	=> $rowset[$orig_topic_id]['topic_moved_id'],
 			'topic_status'		=> $rowset[$orig_topic_id]['topic_status'],
 			'topic_type'		=> $rowset[$orig_topic_id]['topic_type'],
+			'topic_reported'	=> $rowset[$orig_topic_id]['topic_reported'],
 		));
 
 		$rowset[$orig_topic_id] = $row;
@@ -634,8 +638,11 @@ if (sizeof($topic_list))
 			'TOPIC_TYPE'		=> $topic_type,
 
 			'TOPIC_FOLDER_IMG'		=> $user->img($folder_img, $folder_alt),
-			'TOPIC_FOLDER_IMG_SRC'	=> $user->img($folder_img, $folder_alt, false, '', 'src'),
+			'TOPIC_FOLDER_IMG_SRC'	=> $user->img($folder_img, $folder_alt, 'src'),
 			'TOPIC_FOLDER_IMG_ALT'	=> $user->lang[$folder_alt],
+			'TOPIC_FOLDER_IMG_WIDTH'=> $user->img($folder_img, '', 'width'),
+			'TOPIC_FOLDER_IMG_HEIGHT'	=> $user->img($folder_img, '', 'height'),
+
 			'TOPIC_ICON_IMG'		=> (!empty($icons[$row['icon_id']])) ? $icons[$row['icon_id']]['img'] : '',
 			'TOPIC_ICON_IMG_WIDTH'	=> (!empty($icons[$row['icon_id']])) ? $icons[$row['icon_id']]['width'] : '',
 			'TOPIC_ICON_IMG_HEIGHT'	=> (!empty($icons[$row['icon_id']])) ? $icons[$row['icon_id']]['height'] : '',

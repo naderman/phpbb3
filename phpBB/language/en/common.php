@@ -169,6 +169,8 @@ $lang = array_merge($lang, array(
 	'ERR_JAB_AUTH'						=> 'Could not authorise on Jabber server.',
 	'ERR_JAB_CONNECT'					=> 'Could not connect to Jabber server.',
 	'ERR_UNABLE_TO_LOGIN'				=> 'The specified username or password is incorrect.',
+	'ERR_UNWATCHING'					=> 'An error occured while trying to unsubscribe.',
+	'ERR_WATCHING'						=> 'An error occured while trying to subscribe.',
 	'ERR_WRONG_PATH_TO_PHPBB'			=> 'The phpBB path specified appears to be invalid.',
 	'EXPAND_VIEW'						=> 'Expand view',
 	'EXTENSION'							=> 'Extension',
@@ -274,7 +276,7 @@ $lang = array_merge($lang, array(
 
 	'JABBER'				=> 'Jabber',
 	'JOINED'				=> 'Joined',
-	'JUMP_PAGE'				=> 'Enter the page number you wish to go to.',
+	'JUMP_PAGE'				=> 'Enter the page number you wish to go to',
 	'JUMP_TO'				=> 'Jump to',
 	'JUMP_TO_PAGE'			=> 'Click to jump to page…',
 
@@ -387,6 +389,13 @@ $lang = array_merge($lang, array(
 	'NO_USER'					=> 'The requested user does not exist.',
 	'NO_USERS'					=> 'The requested users do not exist.',
 	'NO_USER_SPECIFIED'			=> 'No username was specified.',
+
+	// Nullar/Singular/Plural language entry. The key numbers define the number range in which a certain grammatical expression is valid.
+	'NUM_POSTS_IN_QUEUE'		=> array(
+		0			=> 'No posts in queue',		// 0
+		1			=> '1 post in queue',		// 1
+		2			=> '%d posts in queue',		// 2+
+	),
 
 	'OCCUPATION'				=> 'Occupation',
 	'OFFLINE'					=> 'Offline',
@@ -536,6 +545,8 @@ $lang = array_merge($lang, array(
 	'THE_TEAM'			=> 'The team',
 	'TIME'				=> 'Time',
 
+	'TOO_LONG'						=> 'The value you entered is too long',
+
 	'TOO_LONG_AIM'					=> 'The screenname you entered is too long.',
 	'TOO_LONG_CONFIRM_CODE'			=> 'The confirm code you entered is too long.',
 	'TOO_LONG_DATEFORMAT'			=> 'The date format you entered is too long.',
@@ -555,6 +566,8 @@ $lang = array_merge($lang, array(
 	'TOO_LONG_YIM'					=> 'The Yahoo! Messenger name you entered is too long.',
 
 	'TOO_MANY_VOTE_OPTIONS'			=> 'You have tried to vote for too many options.',
+
+	'TOO_SHORT'						=> 'The value you entered is too short.',
 
 	'TOO_SHORT_AIM'					=> 'The screenname you entered is too short.',
 	'TOO_SHORT_CONFIRM_CODE'		=> 'The confirm code you entered is too short.',

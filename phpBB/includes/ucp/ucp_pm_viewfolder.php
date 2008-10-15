@@ -231,7 +231,7 @@ function view_folder($id, $mode, $folder_id, $folder)
 					'PM_ICON_IMG'		=> (!empty($icons[$row['icon_id']])) ? '<img src="' . $config['icons_path'] . '/' . $icons[$row['icon_id']]['img'] . '" width="' . $icons[$row['icon_id']]['width'] . '" height="' . $icons[$row['icon_id']]['height'] . '" alt="" title="" />' : '',
 					'PM_ICON_URL'		=> (!empty($icons[$row['icon_id']])) ? $config['icons_path'] . '/' . $icons[$row['icon_id']]['img'] : '',
 					'FOLDER_IMG'		=> $user->img($folder_img, $folder_alt),
-					'FOLDER_IMG_SRC'	=> $user->img($folder_img, $folder_alt, false, '', 'src'),
+					'FOLDER_IMG_SRC'	=> $user->img($folder_img, $folder_alt, 'src'),
 					'PM_IMG'			=> ($row_indicator) ? $user->img('pm_' . $row_indicator, '') : '',
 					'ATTACH_ICON_IMG'	=> ($auth->acl_get('u_pm_download') && $row['message_attachment'] && $config['allow_pm_attach']) ? $user->img('icon_topic_attach', $user->lang['TOTAL_ATTACHMENTS']) : '',
 
@@ -511,7 +511,7 @@ function get_pm_from($folder_id, $folder, $user_id)
 		'S_TOPIC_ICONS'			=> ($config['enable_pm_icons']) ? true : false,
 
 		'U_POST_NEW_TOPIC'	=> ($auth->acl_get('u_sendpm')) ? append_sid('ucp', 'i=pm&amp;mode=compose') : '',
-		'S_PM_ACTION'		=> append_sid('ucp', "i=pm&amp;mode=view&amp;action=view_folder&amp;f=$folder_id"))
+		'S_PM_ACTION'		=> append_sid('ucp', "i=pm&amp;mode=view&amp;action=view_folder&amp;f=$folder_id" . (($start !== 0) ? "&amp;start=$start" : '')))
 	);
 
 	// Grab all pm data

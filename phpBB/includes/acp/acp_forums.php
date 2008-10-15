@@ -153,8 +153,11 @@ class acp_forums
 					if ($forum_data['forum_type'] == FORUM_LINK)
 					{
 						$forum_data['display_on_index'] = request_var('link_display_on_index', false);
+					}
 
-						// Linked forums are not able to be locked...
+					// Linked forums and categories are not able to be locked...
+					if ($forum_data['forum_type'] == FORUM_LINK || $forum_data['forum_type'] == FORUM_CAT)
+					{
 						$forum_data['forum_status'] = ITEM_UNLOCKED;
 					}
 
@@ -921,9 +924,8 @@ class acp_forums
 		$range_test_ary = array(
 			array('lang' => 'FORUM_TOPICS_PAGE', 'value' => $forum_data['forum_topics_per_page'], 'column_type' => 'TINT:0'),
 		);
+
 		validate_range($range_test_ary, $errors);
-
-
 
 		// Set forum flags
 		// 1 = link tracking
@@ -1205,7 +1207,14 @@ class acp_forums
 
 			if ($row['parent_id'] != $forum_data_sql['parent_id'])
 			{
-				$errors = $this->move_forum($forum_data_sql['forum_id'], $forum_data_sql['parent_id']);
+				if ($row['forum_id'] != $forum_data_sql['parent_id'])
+				{
+					$errors = $this->move_forum($forum_data_sql['forum_id'], $forum_data_sql['parent_id']);
+				}
+				else
+				{
+					$forum_data_sql['parent_id'] = $row['parent_id'];
+				}
 			}
 
 			if (sizeof($errors))
@@ -1646,7 +1655,8 @@ class acp_forums
 		$sql = 'SELECT poster_id
 			FROM ' . POSTS_TABLE . '
 			WHERE forum_id = ' . $forum_id . '
-				AND post_postcount = 1';
+				AND post_postcount = 1
+				AND post_approved = 1';
 		$result = $db->sql_query($sql);
 
 		$post_counts = array();
@@ -1766,6 +1776,7 @@ class acp_forums
 					WHERE user_id = ' . $poster_id . '
 					AND user_posts < ' . $substract;
 				$db->sql_query($sql);
+
 				$sql = 'UPDATE ' . USERS_TABLE . '
 					SET user_posts = user_posts - ' . $substract . '
 					WHERE user_id = ' . $poster_id . '
@@ -1809,7 +1820,7 @@ class acp_forums
 		$row = $db->sql_fetchrow($result);
 		$db->sql_freeresult($result);
 
-		set_config('upload_dir_size', (int) $row['stat'], true);
+		set_config('upload_dir_size', (float) $row['stat'], true);
 
 		return array();
 	}

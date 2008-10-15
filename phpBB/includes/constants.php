@@ -24,6 +24,9 @@ if (!defined('IN_PHPBB'))
 * PHPBB_ADMIN_PATH
 */
 
+// phpBB Version
+define('PHPBB_VERSION', '3.1.0-dev');
+
 // QA-related
 // define('PHPBB_QA', 1);
 
@@ -176,6 +179,11 @@ define('REFERER_VALIDATE_NONE', 0);
 define('REFERER_VALIDATE_HOST', 1);
 define('REFERER_VALIDATE_PATH', 2);
 
+// phpbb_chmod() permissions
+@define('CHMOD_ALL', 7);
+@define('CHMOD_READ', 4);
+@define('CHMOD_WRITE', 2);
+@define('CHMOD_EXECUTE', 1);
 
 // Additional constants
 define('VOTE_CONVERTED', 127);
@@ -230,7 +238,6 @@ define('SITELIST_TABLE',			$table_prefix . 'sitelist');
 define('SMILIES_TABLE',				$table_prefix . 'smilies');
 define('STYLES_TABLE',				$table_prefix . 'styles');
 define('STYLES_TEMPLATE_TABLE',		$table_prefix . 'styles_template');
-define('STYLES_TEMPLATE_DATA_TABLE',$table_prefix . 'styles_template_data');
 define('STYLES_THEME_TABLE',		$table_prefix . 'styles_theme');
 define('STYLES_IMAGESET_TABLE',		$table_prefix . 'styles_imageset');
 define('STYLES_IMAGESET_DATA_TABLE',$table_prefix . 'styles_imageset_data');

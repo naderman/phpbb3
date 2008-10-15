@@ -458,16 +458,13 @@ class install_install extends module
 			if (!file_exists(PHPBB_ROOT_PATH . $dir))
 			{
 				@mkdir(PHPBB_ROOT_PATH . $dir, 0777);
-				@chmod(PHPBB_ROOT_PATH . $dir, 0777);
+				phpbb_chmod(PHPBB_ROOT_PATH . $dir, CHMOD_READ | CHMOD_WRITE);
 			}
 
 			// Now really check
 			if (file_exists(PHPBB_ROOT_PATH . $dir) && is_dir(PHPBB_ROOT_PATH . $dir))
 			{
-				if (!@is_writable(PHPBB_ROOT_PATH . $dir))
-				{
-					@chmod(PHPBB_ROOT_PATH . $dir, 0777);
-				}
+				phpbb_chmod(PHPBB_ROOT_PATH . $dir, CHMOD_READ | CHMOD_WRITE);
 				$exists = true;
 			}
 
@@ -952,7 +949,8 @@ class install_install extends module
 
 			if ($written)
 			{
-				@chmod(PHPBB_ROOT_PATH . 'config.' . PHP_EXT, 0644);
+				// We may revert back to chmod() if we see problems with users not able to change their config.php file directly
+				phpbb_chmod(PHPBB_ROOT_PATH . 'config.' . PHP_EXT, CHMOD_READ);
 			}
 		}
 
@@ -1380,13 +1378,17 @@ class install_install extends module
 
 			'UPDATE ' . $data['table_prefix'] . "forums
 				SET forum_last_post_time = $current_time",
+
+			'UPDATE ' . $data['table_prefix'] . "config
+				SET config_value = '" . $db->sql_escape($db->sql_server_info(true)) . "'
+				WHERE config_name = 'dbms_version'",
 		);
 
 		if (@extension_loaded('gd') || can_load_dll('gd'))
 		{
 			$sql_ary[] = 'UPDATE ' . $data['table_prefix'] . "config
-				SET config_value = '1'
-				WHERE config_name = 'captcha_gd'";
+				SET config_value = 'phpbb_captcha_gd'
+				WHERE config_name = 'captcha_plugin'";
 		}
 
 		// We set a (semi-)unique cookie name to bypass login issues related to the cookie name.
@@ -1957,7 +1959,7 @@ class install_install extends module
 			'TITLE'		=> $lang['INSTALL_CONGRATS'],
 			'BODY'		=> sprintf($lang['INSTALL_CONGRATS_EXPLAIN'], $config['version'], append_sid('install/index', 'mode=convert&amp;language=' . $data['language']), '../docs/README.html'),
 			'L_SUBMIT'	=> $lang['INSTALL_LOGIN'],
-			'U_ACTION'	=> append_sid(CONFIG_ADM_FOLDER . '/index'),
+			'U_ACTION'	=> append_sid('adm/index'),
 		));
 	}
 

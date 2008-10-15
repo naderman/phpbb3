@@ -129,7 +129,7 @@ switch ($mode)
 		$admin_memberships = group_memberships($admin_group_id, $admin_id_ary);
 
 		$admin_user_ids = array();
-		
+
 		if (!empty($admin_memberships))
 		{
 			// ok, we only need the user ids...
@@ -527,13 +527,32 @@ switch ($mode)
 			unset($module);
 		}
 
+		// If the user has m_approve permission or a_user permission, then list then display unapproved posts
+		if ($auth->acl_getf_global('m_approve') || $auth->acl_get('a_user'))
+		{
+			$sql = 'SELECT COUNT(post_id) as posts_in_queue
+				FROM ' . POSTS_TABLE . '
+				WHERE poster_id = ' . $user_id . '
+					AND post_approved = 0';
+			$result = $db->sql_query($sql);
+			$member['posts_in_queue'] = (int) $db->sql_fetchfield('posts_in_queue');
+			$db->sql_freeresult($result);
+		}
+		else
+		{
+			$member['posts_in_queue'] = 0;
+		}
+
 		$template->assign_vars(array(
+			'L_POSTS_IN_QUEUE'	=> $user->lang('NUM_POSTS_IN_QUEUE', $member['posts_in_queue']),
+
 			'POSTS_DAY'			=> sprintf($user->lang['POST_DAY'], $posts_per_day),
 			'POSTS_PCT'			=> sprintf($user->lang['POST_PCT'], $percentage),
 
 			'OCCUPATION'	=> (!empty($member['user_occ'])) ? censor_text($member['user_occ']) : '',
 			'INTERESTS'		=> (!empty($member['user_interests'])) ? censor_text($member['user_interests']) : '',
 			'SIGNATURE'		=> $member['user_sig'],
+			'POSTS_IN_QUEUE'=> $member['posts_in_queue'],
 
 			'AVATAR_IMG'	=> $poster_avatar,
 			'PM_IMG'		=> $user->img('icon_contact_pm', $user->lang['SEND_PRIVATE_MESSAGE']),
@@ -553,6 +572,7 @@ switch ($mode)
 			'U_USER_ADMIN'			=> ($auth->acl_get('a_user')) ? append_sid(CONFIG_ADM_FOLDER . '/index', 'i=users&amp;mode=overview&amp;u=' . $user_id, true, $user->session_id) : '',
 			'U_USER_BAN'			=> ($auth->acl_get('m_ban')) ? append_sid('mcp', 'i=ban&amp;mode=user&amp;u=' . $user_id, true, $user->session_id) : '',
 			'U_SWITCH_PERMISSIONS'	=> ($auth->acl_get('a_switchperm') && $user->data['user_id'] != $user_id) ? append_sid('ucp', "mode=switch_perm&amp;u={$user_id}") : '',
+			'U_MCP_QUEUE'			=> ($auth->acl_getf_global('m_approve')) ? append_sid('mcp', 'i=queue', true, $user->session_id) : '',
 
 			'S_ZEBRA'			=> ($user->data['user_id'] != $user_id && $user->data['is_registered'] && $zebra_enabled) ? true : false,
 			'U_ADD_FRIEND'		=> (!$friend) ? append_sid('ucp', 'i=zebra&amp;add=' . urlencode(htmlspecialchars_decode($member['username']))) : '',
@@ -1136,7 +1156,7 @@ switch ($mode)
 				'RANK_IMG'		=> $rank_img,
 				'RANK_IMG_SRC'	=> $rank_img_src,
 
-				'U_PM'			=> ($auth->acl_get('u_sendpm') && $auth->acl_get('u_masspm') && $group_row['group_receive_pm'] && $config['allow_privmsg'] && $config['allow_mass_pm']) ? append_sid('ucp', 'i=pm&amp;mode=compose&amp;g=' . $group_id) : '',)
+				'U_PM'			=> ($auth->acl_get('u_sendpm') && $auth->acl_get('u_masspm_group') && $group_row['group_receive_pm'] && $config['allow_privmsg'] && $config['allow_mass_pm']) ? append_sid('ucp', 'i=pm&amp;mode=compose&amp;g=' . $group_id) : '',)
 			);
 
 			$sql_select = ', ug.group_leader';
@@ -1146,7 +1166,7 @@ switch ($mode)
 			$sql_where .= " AND ug.user_pending = 0 AND u.user_id = ug.user_id AND ug.group_id = $group_id";
 			$sql_where_data = " AND u.user_id = ug.user_id AND ug.group_id = $group_id";
 		}
-		
+
 		// Sorting and order
 		if (!isset($sort_key_sql[$sort_key]))
 		{
@@ -1229,8 +1249,7 @@ switch ($mode)
 				$sort_params[] = $param;
 			}
 		}
-
-		$u_hide_find_member = append_sid('memberlist', implode('&amp;', $params));
+		$u_hide_find_member = append_sid('memberlist', "start=$start" . implode('&amp;', $params));
 
 		$params[] = "mode=$mode";
 		$sort_params[] = "mode=$mode";
@@ -1444,7 +1463,7 @@ switch ($mode)
 			'JABBER_IMG'	=> $user->img('icon_contact_jabber', $user->lang['JABBER']),
 			'SEARCH_IMG'	=> $user->img('icon_user_search', $user->lang['SEARCH']),
 
-			'U_FIND_MEMBER'			=> ($config['load_search'] || $auth->acl_get('a_')) ? append_sid('memberlist', 'mode=searchuser') : '',
+			'U_FIND_MEMBER'			=> ($config['load_search'] || $auth->acl_get('a_')) ? append_sid('memberlist', 'mode=searchuser' . (($start) ? "&amp;start=$start" : '')) : '',
 			'U_HIDE_FIND_MEMBER'	=> ($mode == 'searchuser') ? $u_hide_find_member : '',
 			'U_SORT_USERNAME'		=> $sort_url . '&amp;sk=a&amp;sd=' . (($sort_key == 'a' && $sort_dir == 'a') ? 'd' : 'a'),
 			'U_SORT_FROM'			=> $sort_url . '&amp;sk=b&amp;sd=' . (($sort_key == 'b' && $sort_dir == 'a') ? 'd' : 'a'),
@@ -1597,16 +1616,16 @@ function show_profile($data)
 function _sort_last_active($first, $second)
 {
 	global $id_cache, $sort_dir;
-	
-	$lesser_than = ($sort_dir === 'a') ? -1 : 1;
-	
+
+	$lesser_than = ($sort_dir === 'd') ? -1 : 1;
+
 	if (isset($id_cache[$first]['group_leader']) && $id_cache[$first]['group_leader'] && (!isset($id_cache[$second]['group_leader']) || !$id_cache[$second]['group_leader']))
 	{
-		return 1;
+		return -1;
 	}
 	else if (isset($id_cache[$second]['group_leader']) && (!isset($id_cache[$first]['group_leader']) || !$id_cache[$first]['group_leader']) && $id_cache[$second]['group_leader'])
 	{
-		return -1;
+		return 1;
 	}
 	else
 	{

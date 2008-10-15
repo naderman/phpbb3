@@ -66,14 +66,14 @@ class session
 		$find = array('"', "'", '<', '>');
 		$replace = array('%22', '%27', '%3C', '%3E');
 
-		foreach ($args as $key => $argument)
+		foreach ($args as $argument)
 		{
 			if (strpos($argument, 'sid=') === 0)
 			{
 				continue;
 			}
 
-			$use_args[str_replace($find, $replace, $key)] = str_replace($find, $replace, $argument);
+			$use_args[] = str_replace($find, $replace, $argument);
 		}
 		unset($args);
 
@@ -136,6 +136,59 @@ class session
 	}
 
 	/**
+	* Get valid hostname/port. HTTP_HOST is used, SERVER_NAME if HTTP_HOST not present.
+	*/
+	function extract_current_hostname()
+	{
+		global $config;
+
+		// Get hostname
+		$host = (!empty($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : ((!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : getenv('SERVER_NAME'));
+
+		// Should be a string and lowered
+		$host = (string) strtolower($host);
+
+		// If host is equal the cookie domain or the server name (if config is set), then we assume it is valid
+		if ((isset($config['cookie_domain']) && $host === $config['cookie_domain']) || (isset($config['server_name']) && $host === $config['server_name']))
+		{
+			return $host;
+		}
+
+		// Is the host actually a IP? If so, we use the IP... (IPv4)
+		if (long2ip(ip2long($host)) === $host)
+		{
+			return $host;
+		}
+
+		// Now return the hostname (this also removes any port definition). The http:// is prepended to construct a valid URL, hosts never have a scheme assigned
+		$host = @parse_url('http://' . $host, PHP_URL_HOST);
+
+		// Remove any portions not removed by parse_url (#)
+		$host = str_replace('#', '', $host);
+
+		// If, by any means, the host is now empty, we will use a "best approach" way to guess one
+		if (empty($host))
+		{
+			if (!empty($config['server_name']))
+			{
+				$host = $config['server_name'];
+			}
+			else if (!empty($config['cookie_domain']))
+			{
+				$host = (strpos($config['cookie_domain'], '.') === 0) ? substr($config['cookie_domain'], 1) : $config['cookie_domain'];
+			}
+			else
+			{
+				// Set to OS hostname or localhost
+				$host = (function_exists('php_uname')) ? php_uname('n') : 'localhost';
+			}
+		}
+
+		// It may be still no valid host, but for sure only a hostname (we may further expand on the cookie domain... if set)
+		return $host;
+	}
+
+	/**
 	* Start session management
 	*
 	* This is where all session activity begins. We gather various pieces of
@@ -159,14 +212,8 @@ class session
 		$this->browser				= (!empty($_SERVER['HTTP_USER_AGENT'])) ? htmlspecialchars((string) $_SERVER['HTTP_USER_AGENT']) : '';
 		$this->referer				= (!empty($_SERVER['HTTP_REFERER'])) ? htmlspecialchars((string) $_SERVER['HTTP_REFERER']) : '';
 		$this->forwarded_for		= (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
-		$this->host					= (!empty($_SERVER['HTTP_HOST'])) ? (string) strtolower($_SERVER['HTTP_HOST']) : ((!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : getenv('SERVER_NAME'));
 
-		// Since HTTP_HOST may carry a port definition, we need to remove it here...
-		if (strpos($this->host, ':') !== false)
-		{
-			$this->host = substr($this->host, 0, strpos($this->host, ':'));
-		}
-
+		$this->host					= self::extract_current_hostname();
 		$this->page					= self::extract_current_page(PHPBB_ROOT_PATH);
 
 		// if the forwarded for header shall be checked we have to validate its contents
@@ -876,40 +923,16 @@ class session
 					WHERE last_login < ' . (time() - (86400 * (int) $config['max_autologin_time']));
 				$db->sql_query($sql);
 			}
-			$this->confirm_gc();
+			
+			// only called from CRON; should be a safe workaround until the infrastructure gets going
+			if (!class_exists('captcha_factory'))
+			{
+				include(PHPBB_ROOT_PATH . "includes/captcha/captcha_factory." . PHP_EXT);
+			}
+			captcha_factory::garbage_collect($config['captcha_plugin']);
 		}
 
 		return;
-	}
-
-	function confirm_gc($type = 0)
-	{
-		global $db, $config;
-
-		$sql = 'SELECT DISTINCT c.session_id
-				FROM ' . CONFIRM_TABLE . ' c
-				LEFT JOIN ' . SESSIONS_TABLE . ' s ON (c.session_id = s.session_id)
-				WHERE s.session_id IS NULL' .
-					((empty($type)) ? '' : ' AND c.confirm_type = ' . (int) $type);
-		$result = $db->sql_query($sql);
-
-		if ($row = $db->sql_fetchrow($result))
-		{
-			$sql_in = array();
-			do
-			{
-				$sql_in[] = (string) $row['session_id'];
-			}
-			while ($row = $db->sql_fetchrow($result));
-
-			if (sizeof($sql_in))
-			{
-				$sql = 'DELETE FROM ' . CONFIRM_TABLE . '
-					WHERE ' . $db->sql_in_set('session_id', $sql_in);
-				$db->sql_query($sql);
-			}
-		}
-		$db->sql_freeresult($result);
 	}
 
 
@@ -1311,7 +1334,7 @@ class session
 	function validate_referer($check_script_path = false)
 	{
 		// no referer - nothing to validate, user's fault for turning it off (we only check on POST; so meta can't be the reason)
-		if (empty($this->referer) || empty($this->host) )
+		if (empty($this->referer) || empty($this->host))
 		{
 			return true;
 		}
@@ -1319,7 +1342,7 @@ class session
 		$host = htmlspecialchars($this->host);
 		$ref = substr($this->referer, strpos($this->referer, '://') + 3);
 
-		if (!(stripos($ref , $host) === 0))
+		if (!(stripos($ref, $host) === 0))
 		{
 			return false;
 		}
@@ -1371,7 +1394,7 @@ class user extends session
 	var $timezone;
 	var $dst;
 
-	var $lang_name;
+	var $lang_name = false;
 	var $lang_id = false;
 	var $lang_path;
 	var $img_lang;
@@ -1382,6 +1405,30 @@ class user extends session
 	var $keyvalues = array();
 
 	/**
+	* Constructor to set the lang path
+	*/
+	public function __construct()
+	{
+		$this->lang_path = PHPBB_ROOT_PATH . 'language/';
+	}
+
+	/**
+	* Function to set custom language path (able to use directory outside of phpBB)
+	*
+	* @param string $lang_path New language path used.
+	* @access public
+	*/
+	function set_custom_lang_path($lang_path)
+	{
+		$this->lang_path = $lang_path;
+
+		if (substr($this->lang_path, -1) != '/')
+		{
+			$this->lang_path .= '/';
+		}
+	}
+
+	/**
 	* Setup basic user-specific items (style, language, ...)
 	*/
 	function setup($lang_set = false, $style = false)
@@ -1390,9 +1437,7 @@ class user extends session
 
 		if ($this->data['user_id'] != ANONYMOUS)
 		{
-			$this->lang_name = (file_exists(PHPBB_ROOT_PATH . 'language/' . $this->data['user_lang'] . '/common.' . PHP_EXT)) ? $this->data['user_lang'] : basename($config['default_lang']);
-			$this->lang_path = PHPBB_ROOT_PATH . 'language/' . $this->lang_name . '/';
-
+			$this->lang_name = (file_exists($this->lang_path . $this->data['user_lang'] . "/common." . PHP_EXT)) ? $this->data['user_lang'] : basename($config['default_lang']);
 			$this->date_format = $this->data['user_dateformat'];
 			$this->timezone = $this->data['user_timezone'] * 3600;
 			$this->dst = $this->data['user_dst'] * 3600;
@@ -1400,7 +1445,6 @@ class user extends session
 		else
 		{
 			$this->lang_name = basename($config['default_lang']);
-			$this->lang_path = PHPBB_ROOT_PATH . 'language/' . $this->lang_name . '/';
 			$this->date_format = $config['default_dateformat'];
 			$this->timezone = $config['board_timezone'] * 3600;
 			$this->dst = $config['board_dst'] * 3600;
@@ -1420,10 +1464,9 @@ class user extends session
 					$accept_lang = substr($accept_lang, 0, 2) . '_' . strtoupper(substr($accept_lang, 3, 2));
 					$accept_lang = basename($accept_lang);
 
-					if (file_exists(PHPBB_ROOT_PATH . 'language/' . $accept_lang . "/common." . PHP_EXT))
+					if (file_exists($this->lang_path . $accept_lang . "/common." . PHP_EXT))
 					{
 						$this->lang_name = $config['default_lang'] = $accept_lang;
-						$this->lang_path = PHPBB_ROOT_PATH . 'language/' . $accept_lang . '/';
 						break;
 					}
 					else
@@ -1432,10 +1475,9 @@ class user extends session
 						$accept_lang = substr($accept_lang, 0, 2);
 						$accept_lang = basename($accept_lang);
 
-						if (file_exists(PHPBB_ROOT_PATH . 'language/' . $accept_lang . "/common." . PHP_EXT))
+						if (file_exists($this->lang_path . $accept_lang . "/common." . PHP_EXT))
 						{
 							$this->lang_name = $config['default_lang'] = $accept_lang;
-							$this->lang_path = PHPBB_ROOT_PATH . 'language/' . $accept_lang . '/';
 							break;
 						}
 					}
@@ -1447,9 +1489,9 @@ class user extends session
 		// We include common language file here to not load it every time a custom language file is included
 		$lang = &$this->lang;
 
-		if ((@include $this->lang_path . 'common.' . PHP_EXT) === false)
+		if ((@include $this->lang_path . $this->lang_name . "/common." . PHP_EXT) === false)
 		{
-			die('Language file ' . $this->lang_name . '/common.' . PHP_EXT . " couldn't be opened.");
+			die('Language file ' . $this->lang_path . $this->lang_name . "/common." . PHP_EXT . " couldn't be opened.");
 		}
 
 		$this->add_lang($lang_set);
@@ -1469,7 +1511,7 @@ class user extends session
 			$style = ($style) ? $style : ((!$config['override_user_style']) ? $this->data['user_style'] : $config['default_style']);
 		}
 
-		$sql = 'SELECT s.style_id, t.template_storedb, t.template_path, t.template_id, t.bbcode_bitfield, c.theme_path, c.theme_name, c.theme_storedb, c.theme_id, i.imageset_path, i.imageset_id, i.imageset_name
+		$sql = 'SELECT s.style_id, t.template_path, t.template_id, t.bbcode_bitfield, c.theme_path, c.theme_name, c.theme_storedb, c.theme_id, i.imageset_path, i.imageset_id, i.imageset_name
 			FROM ' . STYLES_TABLE . ' s, ' . STYLES_TEMPLATE_TABLE . ' t, ' . STYLES_THEME_TABLE . ' c, ' . STYLES_IMAGESET_TABLE . " i
 			WHERE s.style_id = $style
 				AND t.template_id = s.template_id
@@ -1489,7 +1531,7 @@ class user extends session
 				WHERE user_id = {$this->data['user_id']}";
 			$db->sql_query($sql);
 
-			$sql = 'SELECT s.style_id, t.template_storedb, t.template_path, t.template_id, t.bbcode_bitfield, c.theme_path, c.theme_name, c.theme_storedb, c.theme_id, i.imageset_path, i.imageset_id, i.imageset_name
+			$sql = 'SELECT s.style_id, t.template_path, t.template_id, t.bbcode_bitfield, c.theme_path, c.theme_name, c.theme_storedb, c.theme_id, i.imageset_path, i.imageset_id, i.imageset_name
 				FROM ' . STYLES_TABLE . ' s, ' . STYLES_TEMPLATE_TABLE . ' t, ' . STYLES_THEME_TABLE . ' c, ' . STYLES_IMAGESET_TABLE . " i
 				WHERE s.style_id = $style
 					AND t.template_id = s.template_id
@@ -1757,6 +1799,72 @@ class user extends session
 	}
 
 	/**
+	* More advanced language substitution
+	* Function to mimic sprintf() with the possibility of using phpBB's language system to substitute nullar/singular/plural forms.
+	* Params are the language key and the parameters to be substituted.
+	* This function/functionality is inspired by SHS` and Ashe.
+	*
+	* Example call: <samp>$user->lang('NUM_POSTS_IN_QUEUE', 1);</samp>
+	*/
+	function lang()
+	{
+		$args = func_get_args();
+		$key = $args[0];
+
+		// Return if language string does not exist
+		if (!isset($this->lang[$key]) || (!is_string($this->lang[$key]) && !is_array($this->lang[$key])))
+		{
+			return $key;
+		}
+
+		// If the language entry is a string, we simply mimic sprintf() behaviour
+		if (is_string($this->lang[$key]))
+		{
+			if (sizeof($args) == 1)
+			{
+				return $this->lang[$key];
+			}
+
+			// Replace key with language entry and simply pass along...
+			$args[0] = $this->lang[$key];
+			return call_user_func_array('sprintf', $args);
+		}
+
+		// It is an array... now handle different nullar/singular/plural forms
+		$key_found = false;
+
+		// We now get the first number passed and will select the key based upon this number
+		for ($i = 1, $num_args = sizeof($args); $i < $num_args; $i++)
+		{
+			if (is_int($args[$i]))
+			{
+				$numbers = array_keys($this->lang[$key]);
+
+				foreach ($numbers as $num)
+				{
+					if ($num > $args[$i])
+					{
+						break;
+					}
+
+					$key_found = $num;
+				}
+			}
+		}
+
+		// Ok, let's check if the key was found, else use the last entry (because it is mostly the plural form)
+		if ($key_found === false)
+		{
+			$numbers = array_keys($this->lang[$key]);
+			$key_found = end($numbers);
+		}
+
+		// Use the language string we determined and pass it to sprintf()
+		$args[0] = $this->lang[$key][$key_found];
+		return call_user_func_array('sprintf', $args);
+	}
+
+	/**
 	* Add Language Items - use_db and use_help are assigned where needed (only use them to force inclusion)
 	*
 	* @param mixed $lang_set specifies the language entries to include
@@ -1813,12 +1921,11 @@ class user extends session
 	*/
 	function set_lang(&$lang, &$help, $lang_file, $use_db = false, $use_help = false)
 	{
-		// Make sure the language path is set (if the user setup did not happen it is not set)
-		if (!$this->lang_path)
+		// Make sure the language name is set (if the user setup did not happen it is not set)
+		if (!$this->lang_name)
 		{
 			global $config;
-
-			$this->lang_path = PHPBB_ROOT_PATH . 'language/' . basename($config['default_lang']) . '/';
+			$this->lang_name = basename($config['default_lang']);
 		}
 
 		// $lang == $this->lang
@@ -1828,11 +1935,11 @@ class user extends session
 		{
 			if ($use_help && strpos($lang_file, '/') !== false)
 			{
-				$language_filename = $this->lang_path . substr($lang_file, 0, stripos($lang_file, '/') + 1) . 'help_' . substr($lang_file, stripos($lang_file, '/') + 1) . '.' . PHP_EXT;
+				$language_filename = $this->lang_path . $this->lang_name . '/' . substr($lang_file, 0, stripos($lang_file, '/') + 1) . 'help_' . substr($lang_file, stripos($lang_file, '/') + 1) . '.' . PHP_EXT;
 			}
 			else
 			{
-				$language_filename = $this->lang_path . (($use_help) ? 'help_' : '') . $lang_file . '.' . PHP_EXT;
+				$language_filename = $this->lang_path . $this->lang_name . '/' . (($use_help) ? 'help_' : '') . $lang_file . '.' . PHP_EXT;
 			}
 
 			if ((@include $language_filename) === false)
@@ -1946,7 +2053,7 @@ class user extends session
 	/**
 	* Specify/Get image
 	*/
-	function img($img, $alt = '', $width = false, $suffix = '', $type = 'full_tag')
+	function img($img, $alt = '', $type = 'full_tag', $width = false)
 	{
 		static $imgs;
 

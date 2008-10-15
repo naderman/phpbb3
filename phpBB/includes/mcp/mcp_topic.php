@@ -226,7 +226,7 @@ function mcp_topic_view($id, $mode, $action)
 
 			'S_POST_REPORTED'	=> ($row['post_reported']) ? true : false,
 			'S_POST_UNAPPROVED'	=> ($row['post_approved']) ? false : true,
-			'S_CHECKED'			=> (!$submitted_id_list || !in_array(intval($row['post_id']), $submitted_id_list) || in_array(intval($row['post_id']), $checked_ids)) ? true : false,
+			'S_CHECKED'			=> (($submitted_id_list && !in_array(intval($row['post_id']), $submitted_id_list)) || in_array(intval($row['post_id']), $checked_ids)) ? true : false,
 			'S_HAS_ATTACHMENTS'	=> (!empty($attachments[$row['post_id']])) ? true : false,
 
 			'U_POST_DETAILS'	=> "$url&amp;i=$id&amp;p={$row['post_id']}&amp;mode=post_details" . (($forum_id) ? "&amp;f=$forum_id" : ''),
@@ -293,8 +293,8 @@ function mcp_topic_view($id, $mode, $action)
 		'POSTS_PER_PAGE'	=> $posts_per_page,
 		'ACTION'			=> $action,
 
-		'REPORTED_IMG'		=> $user->img('icon_topic_reported', 'POST_REPORTED', false, true),
-		'UNAPPROVED_IMG'	=> $user->img('icon_topic_unapproved', 'POST_UNAPPROVED', false, true),
+		'REPORTED_IMG'		=> $user->img('icon_topic_reported', 'POST_REPORTED'),
+		'UNAPPROVED_IMG'	=> $user->img('icon_topic_unapproved', 'POST_UNAPPROVED'),
 
 		'S_MCP_ACTION'		=> "$url&amp;i=$id&amp;mode=$mode&amp;action=$action&amp;start=$start",
 		'S_FORUM_SELECT'	=> ($to_forum_id) ? make_forum_select($to_forum_id, false, false, true, true, true) : make_forum_select($topic_info['forum_id'], false, false, true, true, true),
@@ -371,11 +371,11 @@ function split_topic($action, $topic_id, $to_forum_id, $subject)
 		return;
 	}
 
-	$forum_info = get_forum_data(array($to_forum_id), 'm_split');
+	$forum_info = get_forum_data(array($to_forum_id), 'f_post');
 
 	if (!sizeof($forum_info))
 	{
-		$template->assign_var('MESSAGE', $user->lang['NOT_MODERATOR']);
+		$template->assign_var('MESSAGE', $user->lang['USER_CANNOT_POST']);
 		return;
 	}
 
