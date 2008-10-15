@@ -3,7 +3,7 @@
 *
 * @package acm
 * @version $Id$
-* @copyright (c) 2005 phpBB Group
+* @copyright (c) 2005, 2008 phpBB Group
 * @license http://opensource.org/licenses/gpl-license.php GNU Public License
 *
 */
@@ -17,54 +17,59 @@ if (!defined('IN_PHPBB'))
 }
 
 /**
-* Class for grabbing/handling cached entries, extends acm_file or acm_db depending on the setup
+* Class for obtaining cached entries, for example censor word list, configuration...
+* --Static Class--
+*
 * @package acm
 */
-class cache
+class phpbb_cache
 {
+	/**
+	* We do not want this object instantiable
+	*/
+	private function ___construct() { }
+
 	/**
 	* Get config values
 	*/
 	public static function obtain_config()
 	{
-		global $db, $cache;
-
-		if (($config = $cache->get('config')) !== false)
+		if ((phpbb::$config = phpbb::$acm->get('#config')) !== false)
 		{
 			$sql = 'SELECT config_name, config_value
 				FROM ' . CONFIG_TABLE . '
 				WHERE is_dynamic = 1';
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
-				$config[$row['config_name']] = $row['config_value'];
+				phpbb::$config[$row['config_name']] = $row['config_value'];
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 		}
 		else
 		{
-			$config = $cached_config = array();
+			phpbb::$config = $cached_config = array();
 
 			$sql = 'SELECT config_name, config_value, is_dynamic
 				FROM ' . CONFIG_TABLE;
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				if (!$row['is_dynamic'])
 				{
 					$cached_config[$row['config_name']] = $row['config_value'];
 				}
 
-				$config[$row['config_name']] = $row['config_value'];
+				phpbb::$config[$row['config_name']] = $row['config_value'];
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('config', $cached_config);
+			phpbb::$acm->put('#config', $cached_config);
 		}
 
-		return $config;
+		return phpbb::$config;
 	}
 
 	/**
@@ -73,25 +78,21 @@ class cache
 	*/
 	public static function obtain_word_list()
 	{
-		global $cache;
-
-		if (($censors = $cache->get('_word_censors')) === false)
+		if (($censors = phpbb::$acm->get('word_censors')) === false)
 		{
-			global $db;
-
 			$sql = 'SELECT word, replacement
 				FROM ' . WORDS_TABLE;
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
 			$censors = array();
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				$censors['match'][] = '#(?<!\w)(' . str_replace('\*', '\w*?', preg_quote($row['word'], '#')) . ')(?!\w)#i';
 				$censors['replace'][] = $row['replacement'];
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('_word_censors', $censors);
+			phpbb::$acm->put('word_censors', $censors);
 		}
 
 		return $censors;
@@ -102,29 +103,25 @@ class cache
 	*/
 	public static function obtain_icons()
 	{
-		global $cache;
-
-		if (($icons = $cache->get('_icons')) === false)
+		if (($icons = phpbb::$acm->get('icons')) === false)
 		{
-			global $db;
-
 			// Topic icons
 			$sql = 'SELECT *
 				FROM ' . ICONS_TABLE . '
 				ORDER BY icons_order';
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
 			$icons = array();
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				$icons[$row['icons_id']]['img'] = $row['icons_url'];
 				$icons[$row['icons_id']]['width'] = (int) $row['icons_width'];
 				$icons[$row['icons_id']]['height'] = (int) $row['icons_height'];
 				$icons[$row['icons_id']]['display'] = (bool) $row['display_on_posting'];
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('_icons', $icons);
+			phpbb::$acm->put('icons', $icons);
 		}
 
 		return $icons;
@@ -135,19 +132,15 @@ class cache
 	*/
 	public static function obtain_ranks()
 	{
-		global $cache;
-
-		if (($ranks = $cache->get('_ranks')) === false)
+		if (($ranks = phpbb::$acm->get('ranks')) === false)
 		{
-			global $db;
-
 			$sql = 'SELECT *
 				FROM ' . RANKS_TABLE . '
 				ORDER BY rank_min DESC';
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
 			$ranks = array();
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				if ($row['rank_special'])
 				{
@@ -165,9 +158,9 @@ class cache
 					);
 				}
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('_ranks', $ranks);
+			phpbb::$acm->put('ranks', $ranks);
 		}
 
 		return $ranks;
@@ -182,12 +175,8 @@ class cache
 	*/
 	public static function obtain_attach_extensions($forum_id)
 	{
-		global $cache;
-
-		if (($extensions = $cache->get('_extensions')) === false)
+		if (($extensions = phpbb::$acm->get('extensions')) === false)
 		{
-			global $db;
-
 			$extensions = array(
 				'_allowed_post'	=> array(),
 				'_allowed_pm'	=> array(),
@@ -198,9 +187,9 @@ class cache
 				FROM ' . EXTENSIONS_TABLE . ' e, ' . EXTENSION_GROUPS_TABLE . ' g
 				WHERE e.group_id = g.group_id
 					AND (g.allow_group = 1 OR g.allow_in_pm = 1)';
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				$extension = strtolower(trim($row['extension']));
 
@@ -226,9 +215,9 @@ class cache
 					$extensions['_allowed_pm'][$extension] = 0;
 				}
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('_extensions', $extensions);
+			phpbb::$acm->put('extensions', $extensions);
 		}
 
 		// Forum post
@@ -289,26 +278,22 @@ class cache
 	*/
 	public static function obtain_bots()
 	{
-		global $cache;
-
-		if (($bots = $cache->get('_bots')) === false)
+		if (($bots = phpbb::$acm->get('bots')) === false)
 		{
-			global $db;
-
 			$sql = 'SELECT user_id, bot_agent, bot_ip
 				FROM ' . BOTS_TABLE . '
 				WHERE bot_active = 1
-			ORDER BY ' . $db->sql_function('length_varchar', 'bot_agent') . 'DESC';
-			$result = $db->sql_query($sql);
+			ORDER BY ' . phpbb::$db->sql_function('length_varchar', 'bot_agent') . 'DESC';
+			$result = phpbb::$db->sql_query($sql);
 
 			$bots = array();
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				$bots[] = $row;
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('_bots', $bots);
+			phpbb::$acm->put('bots', $bots);
 		}
 
 		return $bots;
@@ -324,9 +309,7 @@ class cache
 	*/
 	public static function obtain_cfg_item($theme, $item = 'theme')
 	{
-		global $config, $cache;
-
-		$parsed_array = $cache->get('_cfg_' . $item . '_' . $theme[$item . '_path']);
+		$parsed_array = phpbb::$acm->get('cfg_' . $item . '_' . $theme[$item . '_path']);
 
 		if ($parsed_array === false)
 		{
@@ -341,7 +324,7 @@ class cache
 			return $parsed_array;
 		}
 
-		if (!isset($parsed_array['filetime']) || (($config['load_tplcompile'] && @filemtime($filename) > $parsed_array['filetime'])))
+		if (!isset($parsed_array['filetime']) || ((phpbb::$config['load_tplcompile'] && @filemtime($filename) > $parsed_array['filetime'])))
 		{
 			$reparse = true;
 		}
@@ -352,7 +335,7 @@ class cache
 			$parsed_array = parse_cfg_file($filename);
 			$parsed_array['filetime'] = @filemtime($filename);
 
-			$cache->put('_cfg_' . $item . '_' . $theme[$item . '_path'], $parsed_array);
+			phpbb::$acm->put('cfg_' . $item . '_' . $theme[$item . '_path'], $parsed_array);
 		}
 
 		return $parsed_array;
@@ -363,24 +346,20 @@ class cache
 	*/
 	public static function obtain_disallowed_usernames()
 	{
-		global $cache;
-
-		if (($usernames = $cache->get('_disallowed_usernames')) === false)
+		if (($usernames = phpbb::$acm->get('disallowed_usernames')) === false)
 		{
-			global $db;
-
 			$sql = 'SELECT disallow_username
 				FROM ' . DISALLOW_TABLE;
-			$result = $db->sql_query($sql);
+			$result = phpbb::$db->sql_query($sql);
 
 			$usernames = array();
-			while ($row = $db->sql_fetchrow($result))
+			while ($row = phpbb::$db->sql_fetchrow($result))
 			{
 				$usernames[] = str_replace('%', '.*?', preg_quote(utf8_clean_string($row['disallow_username']), '#'));
 			}
-			$db->sql_freeresult($result);
+			phpbb::$db->sql_freeresult($result);
 
-			$cache->put('_disallowed_usernames', $usernames);
+			phpbb::$acm->put('disallowed_usernames', $usernames);
 		}
 
 		return $usernames;
@@ -391,9 +370,7 @@ class cache
 	*/
 	public static function obtain_hooks()
 	{
-		global $cache;
-
-		if (($hook_files = $cache->get('_hooks')) === false)
+		if (($hook_files = phpbb::$acm->get('hooks')) === false)
 		{
 			$hook_files = array();
 
@@ -412,7 +389,7 @@ class cache
 				closedir($dh);
 			}
 
-			$cache->put('_hooks', $hook_files);
+			phpbb::$acm->put('hooks', $hook_files);
 		}
 
 		return $hook_files;
