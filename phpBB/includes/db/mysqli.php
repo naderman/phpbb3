@@ -16,7 +16,7 @@ if (!defined('IN_PHPBB'))
 	exit;
 }
 
-include_once(PHPBB_ROOT_PATH . 'includes/db/dbal.' . PHP_EXT);
+include_once PHPBB_ROOT_PATH . 'includes/db/dbal.' . PHP_EXT;
 
 /**
 * MySQLi Database Abstraction Layer
@@ -27,17 +27,16 @@ include_once(PHPBB_ROOT_PATH . 'includes/db/dbal.' . PHP_EXT);
 */
 class dbal_mysqli extends dbal
 {
-	var $multi_insert = true;
+	public $multi_insert = true;
 
 	// Supports multiple table deletion
-	var $multi_table_deletion = true;
-
-	var $dbms_type = 'mysql';
+	public $multi_table_deletion = true;
+	public $dbms_type = 'mysql';
 
 	/**
 	* Connect to server
 	*/
-	function sql_connect($sqlserver, $sqluser, $sqlpassword, $database, $port = false, $persistency = false , $new_link = false)
+	public function sql_connect($sqlserver, $sqluser, $sqlpassword, $database, $port = false, $persistency = false , $new_link = false)
 	{
 		$this->persistency = $persistency;
 		$this->user = $sqluser;
@@ -89,11 +88,9 @@ class dbal_mysqli extends dbal
 	* @param bool $raw if true, only return the fetched sql_server_version
 	* @return string sql server version
 	*/
-	function sql_server_info($raw = false)
+	public function sql_server_info($raw = false)
 	{
-		global $cache;
-
-		if (empty($cache) || ($this->sql_server_version = $cache->get('mysqli_version')) === false)
+		if (!phpbb::registered('acm') || ($this->sql_server_version = phpbb::$acm->get('#mysqli_version')) === false)
 		{
 			$result = @mysqli_query($this->db_connect_id, 'SELECT VERSION() AS version');
 			$row = @mysqli_fetch_assoc($result);
@@ -101,9 +98,9 @@ class dbal_mysqli extends dbal
 
 			$this->sql_server_version = $row['version'];
 
-			if (!empty($cache))
+			if (phpbb::registered('acm'))
 			{
-				$cache->put('mysqli_version', $this->sql_server_version);
+				phpbb::$acm->put('#mysqli_version', $this->sql_server_version);
 			}
 		}
 
@@ -114,7 +111,7 @@ class dbal_mysqli extends dbal
 	* SQL Transaction
 	* @access private
 	*/
-	function _sql_transaction($status = 'begin')
+	public function _sql_transaction($status = 'begin')
 	{
 		switch ($status)
 		{
@@ -147,19 +144,23 @@ class dbal_mysqli extends dbal
 	*
 	* @access	public
 	*/
-	function sql_query($query = '', $cache_ttl = 0)
+	public function sql_query($query = '', $cache_ttl = 0)
 	{
 		if ($query != '')
 		{
-			global $cache;
-
 			// EXPLAIN only in extra debug mode
 			if (defined('DEBUG_EXTRA'))
 			{
 				$this->sql_report('start', $query);
 			}
 
-			$this->query_result = ($cache_ttl && method_exists($cache, 'sql_load')) ? $cache->sql_load($query) : false;
+			$this->query_result = false;
+
+			if ($cache_ttl && phpbb::$acm->supported('sql'))
+			{
+				$this->get_sql_cache($query);
+			}
+
 			$this->sql_add_num_queries($this->query_result);
 
 			if ($this->query_result === false)
@@ -174,9 +175,9 @@ class dbal_mysqli extends dbal
 					$this->sql_report('stop', $query);
 				}
 
-				if ($cache_ttl && method_exists($cache, 'sql_save'))
+				if ($cache_ttl && phpbb::$acm->supported('sql'))
 				{
-					$cache->sql_save($query, $this->query_result, $cache_ttl);
+					$this->put_sql_cache($query, $cache_ttl);
 				}
 			}
 			else if (defined('DEBUG_EXTRA'))
@@ -195,7 +196,7 @@ class dbal_mysqli extends dbal
 	/**
 	* Build LIMIT query
 	*/
-	function _sql_query_limit($query, $total, $offset = 0, $cache_ttl = 0)
+	private function _sql_query_limit($query, $total, $offset = 0, $cache_ttl = 0)
 	{
 		$this->query_result = false;
 
@@ -214,7 +215,7 @@ class dbal_mysqli extends dbal
 	/**
 	* Return number of affected rows
 	*/
-	function sql_affectedrows()
+	public function sql_affectedrows()
 	{
 		return ($this->db_connect_id) ? @mysqli_affected_rows($this->db_connect_id) : false;
 	}
@@ -222,18 +223,16 @@ class dbal_mysqli extends dbal
 	/**
 	* Fetch current row
 	*/
-	function sql_fetchrow($query_id = false)
+	public function sql_fetchrow($query_id = false)
 	{
-		global $cache;
-
 		if ($query_id === false)
 		{
 			$query_id = $this->query_result;
 		}
 
-		if (!is_object($query_id) && isset($cache->sql_rowset[$query_id]))
+		if ($this->cache_exist($query_id))
 		{
-			return $cache->sql_fetchrow($query_id);
+			return $this->cache_fetchrow($query_id);
 		}
 
 		return ($query_id !== false) ? @mysqli_fetch_assoc($query_id) : false;
@@ -242,7 +241,7 @@ class dbal_mysqli extends dbal
 	/**
 	* Get last inserted id after insert statement
 	*/
-	function sql_nextid()
+	public function sql_nextid()
 	{
 		return ($this->db_connect_id) ? @mysqli_insert_id($this->db_connect_id) : false;
 	}
@@ -250,18 +249,16 @@ class dbal_mysqli extends dbal
 	/**
 	* Free sql result
 	*/
-	function sql_freeresult($query_id = false)
+	public function sql_freeresult($query_id = false)
 	{
-		global $cache;
-
 		if ($query_id === false)
 		{
 			$query_id = $this->query_result;
 		}
 
-		if (!is_object($query_id) && isset($cache->sql_rowset[$query_id]))
+		if ($this->cache_exist($query_id))
 		{
-			return $cache->sql_freeresult($query_id);
+			return $this->cache_freeresult($query_id);
 		}
 
 		return @mysqli_free_result($query_id);
@@ -270,7 +267,7 @@ class dbal_mysqli extends dbal
 	/**
 	* Escape string used in sql query
 	*/
-	function sql_escape($msg)
+	public function sql_escape($msg)
 	{
 		return @mysqli_real_escape_string($this->db_connect_id, $msg);
 	}
@@ -278,7 +275,7 @@ class dbal_mysqli extends dbal
 	/**
 	* Expose a DBMS specific function
 	*/
-	function sql_function($type, $col)
+	public function sql_function($type, $col)
 	{
 		switch ($type)
 		{
@@ -289,7 +286,15 @@ class dbal_mysqli extends dbal
 		}
 	}
 
-	function sql_handle_data($type, $table, $data, $where = '')
+	/**
+	* Handle data by using prepared statements
+	*
+	* @param string $type The type to handle. Possible values are: INSERT, UPDATE
+	* @param string $table The table to use insert or update
+	* @param mixed $data The data to insert/update in an array (key == column, value == value)
+	* @param string $where An optional where-statement
+	*/
+	public function sql_handle_data($type, $table, $data, $where = '')
 	{
 		if ($type === 'INSERT')
 		{
@@ -323,12 +328,11 @@ class dbal_mysqli extends dbal
 		mysqli_stmt_close($stmt);
 	}
 
-
 	/**
 	* Build LIKE expression
 	* @access private
 	*/
-	function _sql_like_expression($expression)
+	private function _sql_like_expression($expression)
 	{
 		return $expression;
 	}
@@ -337,7 +341,7 @@ class dbal_mysqli extends dbal
 	* Build db-specific query data
 	* @access private
 	*/
-	function _sql_custom_build($stage, $data)
+	private function _sql_custom_build($stage, $data)
 	{
 		switch ($stage)
 		{
@@ -353,7 +357,7 @@ class dbal_mysqli extends dbal
 	* return sql error array
 	* @access private
 	*/
-	function _sql_error()
+	private function _sql_error()
 	{
 		if (!$this->db_connect_id)
 		{
@@ -373,7 +377,7 @@ class dbal_mysqli extends dbal
 	* Close sql connection
 	* @access private
 	*/
-	function _sql_close()
+	private function _sql_close()
 	{
 		return @mysqli_close($this->db_connect_id);
 	}
@@ -382,7 +386,7 @@ class dbal_mysqli extends dbal
 	* Build db-specific report
 	* @access private
 	*/
-	function _sql_report($mode, $query = '')
+	private function _sql_report($mode, $query = '')
 	{
 		static $test_prof;
 

@@ -22,67 +22,73 @@ if (!defined('IN_PHPBB'))
 */
 class dbal
 {
-	var $db_connect_id;
-	var $query_result;
-	var $return_on_error = false;
-	var $transaction = false;
-	var $sql_time = 0;
-	var $num_queries = array();
-	var $open_queries = array();
+	public $db_connect_id;
+	public $query_result;
+	public $return_on_error = false;
+	public $transaction = false;
+	public $sql_time = 0;
+	public $num_queries = array();
+	public $open_queries = array();
 
-	var $curtime = 0;
-	var $query_hold = '';
-	var $html_hold = '';
-	var $sql_report = '';
+	public $curtime = 0;
+	protected $query_hold = '';
+	protected $html_hold = '';
+	protected $sql_report = '';
 
-	var $persistency = false;
-	var $user = '';
-	var $server = '';
-	var $dbname = '';
+	public $persistency = false;
+	public $user = '';
+	public $server = '';
+	public $dbname = '';
 
 	// Set to true if error triggered
-	var $sql_error_triggered = false;
+	public $sql_error_triggered = false;
 
 	// Holding the last sql query on sql error
-	var $sql_error_sql = '';
+	public $sql_error_sql = '';
 	// Holding the error information - only populated if sql_error_triggered is set
-	var $sql_error_returned = array();
+	public $sql_error_returned = array();
 
 	// Holding transaction count
-	var $transactions = 0;
+	public $transactions = 0;
 
 	// Supports multi inserts?
-	var $multi_insert = false;
+	public $multi_insert = false;
 
 	// Supports COUNT(DISTINCT ...)?
-	var $count_distinct = true;
+	public $count_distinct = true;
 
 	// Supports multiple table deletion
-	var $multi_table_deletion = false;
+	public $multi_table_deletion = false;
 
 	// Supports table truncation
-	var $truncate = true;
+	public $truncate = true;
 
 	/**
 	* Current sql layer
 	*/
-	var $sql_layer = '';
+	public $sql_layer = '';
 
 	/**
 	* Wildcards for matching any (%) or exactly one (_) character within LIKE expressions
 	*/
-	var $any_char;
-	var $one_char;
+	protected $any_char;
+	protected $one_char;
 
 	/**
 	* Exact version of the DBAL, directly queried
 	*/
-	var $sql_server_version = false;
+	public $sql_server_version = false;
+
+	/**
+	* Cached SQL Rowset
+	*/
+	protected $cache_rowset = array();
+	protected $cache_index = 0;
 
 	/**
 	* Constructor
 	*/
-	function __construct()
+	public function __construct()
 	{
 		$this->num_queries = array(
 			'cached'		=> 0,
@@ -97,12 +103,15 @@ class dbal
 		// Do not change this please! This variable is used to easy the use of it - and is hardcoded.
 		$this->any_char = chr(0) . '%';
 		$this->one_char = chr(0) . '_';
+
+		$this->cache_rowset = array();
+		$this->cache_index = 0;
 	}
 
 	/**
 	* return on error or display error message
 	*/
-	function sql_return_on_error($fail = false)
+	public function sql_return_on_error($fail = false)
 	{
 		$this->sql_error_triggered = false;
 		$this->sql_error_sql = '';
@@ -113,7 +122,7 @@ class dbal
 	/**
 	* Return number of sql queries and cached sql queries used
 	*/
-	function sql_num_queries($cached = false)
+	public function sql_num_queries($cached = false)
 	{
 		return ($cached) ? $this->num_queries['cached'] : $this->num_queries['normal'];
 	}
@@ -121,7 +130,7 @@ class dbal
 	/**
 	* Add to query count
 	*/
-	function sql_add_num_queries($cached = false)
+	public function sql_add_num_queries($cached = false)
 	{
 		$this->num_queries['cached'] += ($cached !== false) ? 1 : 0;
 		$this->num_queries['normal'] += ($cached !== false) ? 0 : 1;
@@ -131,7 +140,7 @@ class dbal
 	/**
 	* DBAL garbage collection, close sql connection
 	*/
-	function sql_close()
+	public function sql_close()
 	{
 		if (!$this->db_connect_id)
 		{
@@ -165,7 +174,7 @@ class dbal
 	* Build LIMIT query
 	* Doing some validation here.
 	*/
-	function sql_query_limit($query, $total, $offset = 0, $cache_ttl = 0)
+	public function sql_query_limit($query, $total, $offset = 0, $cache_ttl = 0)
 	{
 		if (empty($query))
 		{
@@ -182,7 +191,7 @@ class dbal
 	/**
 	* Fetch all rows
 	*/
-	function sql_fetchrowset($query_id = false)
+	public function sql_fetchrowset($query_id = false)
 	{
 		if ($query_id === false)
 		{
@@ -206,10 +215,8 @@ class dbal
 	/**
 	* Fetch field
 	*/
-	function sql_fetchfield($field, $query_id = false)
+	public function sql_fetchfield($field, $query_id = false)
 	{
-		global $cache;
-
 		if ($query_id === false)
 		{
 			$query_id = $this->query_result;
@@ -217,9 +224,9 @@ class dbal
 
 		if ($query_id !== false)
 		{
-			if (!is_object($query_id) && isset($cache->sql_rowset[$query_id]))
+			if ($this->cache_exist($query_id))
 			{
-				return $cache->sql_fetchfield($query_id, $field);
+				return $this->cache_fetchfield($query_id, $field);
 			}
 
 			$row = $this->sql_fetchrow($query_id);
@@ -230,13 +237,45 @@ class dbal
 	}
 
 	/**
+	* Fetch row from cache (database)
+	*/
+	protected function cache_fetchrow($query_id)
+	{
+		list(, $row) = each($this->cache_rowset[$query_id]);
+		return ($row !== NULL) ? $row : false;
+	}
+
+	/**
+	* Fetch a field from the current row of a cached database result (database)
+	*/
+	protected function cache_fetchfield($query_id, $field)
+	{
+		$row = current($this->cache_rowset[$query_id]);
+		return ($row !== false && isset($row[$field])) ? $row[$field] : false;
+	}
+
+	/**
+	* Free memory used for a cached database result (database)
+	*/
+	protected function cache_freeresult($query_id)
+	{
+		if (!isset($this->cache_rowset[$query_id]))
+		{
+			return false;
+		}
+
+		unset($this->cache_rowset[$query_id]);
+		return true;
+	}
+
+	/**
 	* Correctly adjust LIKE expression for special characters
 	* Some DBMS are handling them in a different way
 	*
 	* @param string $expression The expression to use. Every wildcard is escaped, except $this->any_char and $this->one_char
 	* @return string LIKE expression including the keyword!
 	*/
-	function sql_like_expression($expression)
+	public function sql_like_expression($expression)
 	{
 		$expression = str_replace(array('_', '%'), array("\_", "\%"), $expression);
 		$expression = str_replace(array(chr(0) . "\_", chr(0) . "\%"), array('_', '%'), $expression);
@@ -248,7 +287,7 @@ class dbal
 	* SQL Transaction
 	* @access private
 	*/
-	function sql_transaction($status = 'begin')
+	public function sql_transaction($status = 'begin')
 	{
 		switch ($status)
 		{
@@ -317,7 +356,7 @@ class dbal
 	* Possible query values: INSERT, INSERT_SELECT, UPDATE, SELECT
 	*
 	*/
-	function sql_build_array($query, $assoc_ary = false)
+	public function sql_build_array($query, $assoc_ary = false)
 	{
 		if (!is_array($assoc_ary))
 		{
@@ -372,7 +411,7 @@ class dbal
 	* @param	bool	$negate				true for NOT IN (), false for IN () (default)
 	* @param	bool	$allow_empty_set	If true, allow $array to be empty, this function will return 1=1 or 1=0 then. Default to false.
 	*/
-	function sql_in_set($field, $array, $negate = false, $allow_empty_set = false)
+	public function sql_in_set($field, $array, $negate = false, $allow_empty_set = false)
 	{
 		if (!sizeof($array))
 		{
@@ -423,7 +462,7 @@ class dbal
 	* @return bool false if no statements were executed.
 	* @access public
 	*/
-	function sql_multi_insert($table, &$sql_ary)
+	public function sql_multi_insert($table, &$sql_ary)
 	{
 		if (!sizeof($sql_ary))
 		{
@@ -472,7 +511,7 @@ class dbal
 	* Function for validating values
 	* @access private
 	*/
-	function _sql_validate_value($var)
+	private function _sql_validate_value($var)
 	{
 		if (is_null($var))
 		{
@@ -493,7 +532,7 @@ class dbal
 	*
 	* Possible query values: SELECT, SELECT_DISTINCT
 	*/
-	function sql_build_query($query, $array)
+	public function sql_build_query($query, $array)
 	{
 		$sql = '';
 		switch ($query)
@@ -551,9 +590,69 @@ class dbal
 	}
 
 	/**
+	* Get stored data from SQL cache and fill the relevant cached rowset.
+	*
+	* @param string $query The query which should be cached.
+	*/
+	public function get_sql_cache($query)
+	{
+		// Remove extra spaces and tabs
+		$var_name = preg_replace('/[\n\r\s\t]+/', ' ', $query);
+		$var_name = md5($this->sql_layer . '_' . $var_name);
+
+		$data = phpbb::$acm->get($var_name, 'sql');
+
+		if ($data !== false)
+		{
+			$this->query_result = ++$this->cache_index;
+			$this->cache_rowset[$this->query_result] = $data['rowset'];
+		}
+	}
+
+	/**
+	* Store query to cache.
+	*
+	* @param string $query The query which should be cached.
+	* @param int $cache_ttl Cache lifetime in seconds.
+	*/
+	public function put_sql_cache($query, $cache_ttl)
+	{
+		// Prepare the data
+		$var_name = preg_replace('/[\n\r\s\t]+/', ' ', $query);
+		$var_name = md5($this->sql_layer . '_' . $var_name);
+
+		$data = array(
+			'query'		=> $query,
+			'rowset'	=> array(),
+		);
+
+		while ($row = $this->sql_fetchrow($this->query_result))
+		{
+			$data['rowset'][] = $row;
+		}
+		$this->sql_freeresult($this->query_result);
+
+		phpbb::$acm->put($var_name, $data, $cache_ttl, 'sql');
+
+		$this->query_result = ++$this->cache_index;
+		$this->cache_rowset[$this->query_result] = $data['rowset'];
+		@reset($this->cache_rowset[$this->query_result]);
+	}
+
+	/**
+	* Check if an sql cache exist for a specific query id.
+	*
+	* @param int $query_id The query_id to check (int)
+	*/
+	public function cache_exist($query_id)
+	{
+		return is_int($query_id) && isset($this->cache_rowset[$query_id]);
+	}
+
+	/**
 	* display sql error page
 	*/
-	function sql_error($sql = '')
+	public function sql_error($sql = '')
 	{
 		global $auth, $user, $config;
 
@@ -628,9 +727,9 @@ class dbal
 	/**
 	* Explain queries
 	*/
-	function sql_report($mode, $query = '')
+	public function sql_report($mode, $query = '')
 	{
-		global $cache, $starttime, $user;
+		global $starttime, $user;
 
 		if (empty($_REQUEST['explain']))
 		{
@@ -645,11 +744,12 @@ class dbal
 		switch ($mode)
 		{
 			case 'display':
-				if (!empty($cache))
-				{
-					$cache->unload();
-				}
 				$this->sql_close();
+
+				if (phpbb::registered('acm'))
+				{
+					phpbb::$acm->unload();
+				}
 
 				$mtime = explode(' ', microtime());
 				$totaltime = $mtime[0] + $mtime[1] - $starttime;
@@ -816,10 +916,5 @@ class dbal
 		return true;
 	}
 }
-
-/**
-* This variable holds the class name to use later
-*/
-$sql_db = (!empty($dbms)) ? 'dbal_' . basename($dbms) : 'dbal';
 
 ?>
