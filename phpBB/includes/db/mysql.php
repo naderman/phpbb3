@@ -16,7 +16,7 @@ if (!defined('IN_PHPBB'))
 	exit;
 }
 
-include_once(PHPBB_ROOT_PATH . 'includes/db/dbal.' . PHP_EXT);
+include_once PHPBB_ROOT_PATH . 'includes/db/dbal.' . PHP_EXT;
 
 /**
 * MySQL Database Abstraction Layer
@@ -333,7 +333,7 @@ class dbal_mysql extends dbal
 
 		return $data;
 	}
-	
+
 	/**
 	* return sql error array
 	* @access private

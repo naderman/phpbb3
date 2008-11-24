@@ -50,7 +50,7 @@ class acp_styles
 		$this->page_title = 'ACP_CAT_STYLES';
 
 		$action = request_var('action', '');
-		$action = (isset($_POST['add'])) ? 'add' : $action;
+		$action = (request::is_set_post('add')) ? 'add' : $action;
 		$style_id = request_var('id', 0);
 
 		// Fill the configuration variables
@@ -633,7 +633,7 @@ parse_css_file = {PARSE_CSS_FILE}
 	{
 		global $config, $db, $cache, $user, $template, $safe_mode;
 
-		if (defined('DISABLE_ACP_EDITOR'))
+		if (defined('PHPBB_DISABLE_ACP_EDITOR'))
 		{
 			trigger_error($user->lang['EDITOR_DISABLED'] . adm_back_link($this->u_action));
 		}
@@ -646,7 +646,7 @@ parse_css_file = {PARSE_CSS_FILE}
 		$template_data	= htmlspecialchars_decode($template_data);
 		$template_file	= utf8_normalize_nfc(request_var('template_file', '', true));
 		$text_rows		= max(5, min(999, request_var('text_rows', 20)));
-		$save_changes	= (isset($_POST['save'])) ? true : false;
+		$save_changes	= request::is_set_post('save');
 
 		// make sure template_file path doesn't go upwards
 		$template_file = str_replace('..', '.', $template_file);
@@ -688,7 +688,7 @@ parse_css_file = {PARSE_CSS_FILE}
 			}
 			fwrite($fp, $template_data);
 			fclose($fp);
-			
+
 			// destroy the cached version of the template (filename without extension)
 			$this->clear_template_cache($template_info, array(substr($template_file, 0, -5)));
 
@@ -805,7 +805,7 @@ parse_css_file = {PARSE_CSS_FILE}
 
 		$source		= str_replace('/', '.', request_var('source', ''));
 		$file_ary	= array_diff(request_var('delete', array('')), array(''));
-		$submit		= isset($_POST['submit']) ? true : false;
+		$submit		= request::is_set_post('submit');
 
 		$sql = 'SELECT *
 			FROM ' . STYLES_TEMPLATE_TABLE . "
@@ -826,7 +826,7 @@ parse_css_file = {PARSE_CSS_FILE}
 			trigger_error($user->lang['TEMPLATE_CACHE_CLEARED'] . adm_back_link($this->u_action . "&amp;action=cache&amp;id=$template_id"));
 		}
 
-		$cache_prefix = 'tpl_' . $template_row['template_path'];
+		$cache_prefix = 'tpl_' . str_replace('_', '-', $template_row['template_path']);
 
 		// Someone wants to see the cached source ... so we'll highlight it,
 		// add line numbers and indent it appropriately. This could be nasty
@@ -930,7 +930,7 @@ parse_css_file = {PARSE_CSS_FILE}
 		$theme_data		= htmlspecialchars_decode($theme_data);
 		$theme_file		= utf8_normalize_nfc(request_var('template_file', '', true));
 		$text_rows		= max(5, min(999, request_var('text_rows', 20)));
-		$save_changes	= (isset($_POST['save'])) ? true : false;
+		$save_changes	= request::is_set_post('save');
 
 		// make sure theme_file path doesn't go upwards
 		$theme_file = str_replace('..', '.', $theme_file);
@@ -1111,7 +1111,7 @@ parse_css_file = {PARSE_CSS_FILE}
 
 		$this->page_title = 'EDIT_IMAGESET';
 
-		$update		= (isset($_POST['update'])) ? true : false;
+		$update		= request::is_set_post('update');
 
 		$imgname	= request_var('imgname', '');
 		$imgpath	= request_var('imgpath', '');
@@ -1172,7 +1172,7 @@ parse_css_file = {PARSE_CSS_FILE}
 				}
 			}
 
-			if ($update && isset($_POST['imgpath']))
+			if ($update && request::is_set_post('imgpath'))
 			{
 				if ($valid_name)
 				{
@@ -1379,7 +1379,7 @@ parse_css_file = {PARSE_CSS_FILE}
 		global $db, $template, $user, $cache, $config;
 
 		$new_id = request_var('new_id', 0);
-		$update = (isset($_POST['update'])) ? true : false;
+		$update = request::is_set_post('update');
 		$sql_where = '';
 
 		switch ($mode)
@@ -1514,7 +1514,7 @@ parse_css_file = {PARSE_CSS_FILE}
 	{
 		global $db, $template, $user, $cache, $config;
 
-		$update = (isset($_POST['update'])) ? true : false;
+		$update = request::is_set_post('update');
 
 		$inc_template = request_var('inc_template', 0);
 		$inc_theme = request_var('inc_theme', 0);
@@ -1638,7 +1638,6 @@ parse_css_file = {PARSE_CSS_FILE}
 			if ($mode == 'template' || $inc_template)
 			{
 				$template_cfg = str_replace(array('{MODE}', '{NAME}', '{COPYRIGHT}', '{VERSION}'), array($mode, $style_row['template_name'], $style_row['template_copyright'], $config['version']), $this->template_cfg);
-				$template_cfg .= "\nbbcode_bitfield = {$style_row['bbcode_bitfield']}";
 
 				$data[] = array(
 					'src'		=> $template_cfg,
@@ -1912,7 +1911,7 @@ parse_css_file = {PARSE_CSS_FILE}
 	{
 		global $template, $db, $config, $user, $safe_mode, $cache;
 
-		$update = (isset($_POST['update'])) ? true : false;
+		$update = request::is_set_post('update');
 		$l_type = strtoupper($mode);
 
 		$error = array();
@@ -2193,7 +2192,7 @@ parse_css_file = {PARSE_CSS_FILE}
 	{
 		global $user;
 
-		$cache_prefix = 'tpl_' . $template_path;
+		$cache_prefix = 'tpl_' . str_replace('_', '-', $template_path);
 
 		if (!($dp = @opendir(PHPBB_ROOT_PATH . 'cache')))
 		{
@@ -2229,7 +2228,7 @@ parse_css_file = {PARSE_CSS_FILE}
 	{
 		global $user;
 
-		$cache_prefix = 'tpl_' . $template_row['template_path'];
+		$cache_prefix = 'tpl_' . str_replace('_', '-', $template_row['template_path']);
 
 		if (!$file_ary || !is_array($file_ary))
 		{
@@ -2270,7 +2269,7 @@ parse_css_file = {PARSE_CSS_FILE}
 		$element_ary = array('template' => STYLES_TEMPLATE_TABLE, 'theme' => STYLES_THEME_TABLE, 'imageset' => STYLES_IMAGESET_TABLE);
 
 		$install_path = request_var('path', '');
-		$update = (isset($_POST['update'])) ? true : false;
+		$update = request::is_set_post('update');
 
 		// Installing, obtain cfg file contents
 		if ($install_path)
@@ -2433,7 +2432,7 @@ parse_css_file = {PARSE_CSS_FILE}
 		);
 
 		$basis = request_var('basis', 0);
-		$update = (isset($_POST['update'])) ? true : false;
+		$update = request::is_set_post('update');
 
 		if ($basis)
 		{

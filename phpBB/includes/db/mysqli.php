@@ -25,7 +25,7 @@ include_once PHPBB_ROOT_PATH . 'includes/db/dbal.' . PHP_EXT;
 * MySQL 5.0+
 * @package dbal
 */
-class dbal_mysqli extends dbal
+class phpbb_dbal_mysqli extends phpbb_dbal
 {
 	public $multi_insert = true;
 

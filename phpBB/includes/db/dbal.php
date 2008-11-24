@@ -20,7 +20,7 @@ if (!defined('IN_PHPBB'))
 * Database Abstraction Layer
 * @package dbal
 */
-class dbal
+class phpbb_dbal
 {
 	public $db_connect_id;
 	public $query_result;
@@ -98,7 +98,7 @@ class dbal
 
 		// Fill default sql layer based on the class being called.
 		// This can be changed by the specified layer itself later if needed.
-		$this->sql_layer = substr(get_class($this), 5);
+		$this->sql_layer = substr(get_class($this), 11);
 
 		// Do not change this please! This variable is used to easy the use of it - and is hardcoded.
 		$this->any_char = chr(0) . '%';
@@ -731,7 +731,7 @@ class dbal
 	{
 		global $starttime, $user;
 
-		if (empty($_REQUEST['explain']))
+		if (!request::variable('explain', false))
 		{
 			return false;
 		}

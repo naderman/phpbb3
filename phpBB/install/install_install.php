@@ -418,7 +418,7 @@ class install_install extends module
 					$location .= '/';
 				}
 
-				if (@is_readable($location . 'mogrify' . $exe) && @filesize($location . 'mogrify' . $exe) > 3000)
+				if (@file_exists($location) && @is_readable($location . 'mogrify' . $exe) && @filesize($location . 'mogrify' . $exe) > 3000)
 				{
 					$img_imagick = str_replace('\\', '/', $location);
 					continue;
@@ -559,7 +559,7 @@ class install_install extends module
 		$available_dbms = get_available_dbms(false, true);
 
 		// Has the user opted to test the connection?
-		if (isset($_POST['testdb']))
+		if (request::is_set_post('testdb'))
 		{
 			if (!isset($available_dbms[$data['dbms']]) || !$available_dbms[$data['dbms']]['AVAILABLE'])
 			{
@@ -700,7 +700,7 @@ class install_install extends module
 
 		$data['default_lang'] = ($data['default_lang'] !== '') ? $data['default_lang'] : $data['language'];
 
-		if (isset($_POST['check']))
+		if (request::is_set_post('check'))
 		{
 			$error = array();
 
@@ -954,7 +954,7 @@ class install_install extends module
 			}
 		}
 
-		if (isset($_POST['dldone']))
+		if (request::is_set_post('dldone'))
 		{
 			// Do a basic check to make sure that the file has been uploaded
 			// Note that all we check is that the file has _something_ in it
@@ -981,7 +981,7 @@ class install_install extends module
 		{
 			// OK, so it didn't work let's try the alternatives
 
-			if (isset($_POST['dlconfig']))
+			if (request::is_set_post('dlconfig'))
 			{
 				// They want a copy of the file to download, so send the relevant headers and dump out the data
 				header('Content-Type: text/x-delimtext; name="config.' . PHP_EXT . '"');
@@ -1140,6 +1140,7 @@ class install_install extends module
 
 		// HTTP_HOST is having the correct browser url in most cases...
 		$server_name = (!empty($_SERVER['HTTP_HOST'])) ? strtolower($_SERVER['HTTP_HOST']) : ((!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : getenv('SERVER_NAME'));
+		$referer = (!empty($_SERVER['HTTP_REFERER'])) ? strtolower($_SERVER['HTTP_REFERER']) : getenv('HTTP_REFERER');
 
 		// HTTP HOST can carry a port number...
 		if (strpos($server_name, ':') !== false)
@@ -1184,19 +1185,17 @@ class install_install extends module
 		$remove_remarks = $available_dbms[$data['dbms']]['COMMENTS'];
 		$delimiter = $available_dbms[$data['dbms']]['DELIM'];
 
-
 		include(PHPBB_ROOT_PATH . 'includes/db/db_tools.php');
 		include(PHPBB_ROOT_PATH . 'install/schemas/schema_data.php');
 
-		// we must do this so that we can handle the errors
-		phpbb_db_tools::$return_statements = true;
+		// we must set return_statements to true so that we can handle the errors
+		$db_tools = new phpbb_db_tools($db, true);
 
 		foreach ($schema_data as $table_name => $table_data)
 		{
 			// Change prefix
 			$table_name = preg_replace('#phpbb_#i', $data['table_prefix'], $table_name);
-
-			$statements = phpbb_db_tools::sql_create_table($table_name, $table_data);
+			$statements = $db_tools->sql_create_table($table_name, $table_data);
 
 			foreach ($statements as $sql)
 			{

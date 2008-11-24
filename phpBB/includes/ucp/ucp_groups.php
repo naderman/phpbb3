@@ -33,8 +33,8 @@ class ucp_groups
 		$return_page = '<br /><br />' . sprintf($user->lang['RETURN_PAGE'], '<a href="' . $this->u_action . '">', '</a>');
 
 		$mark_ary	= request_var('mark', array(0));
-		$submit		= (!empty($_POST['submit'])) ? true : false;
-		$delete		= (!empty($_POST['delete'])) ? true : false;
+		$submit		= request::variable('submit', false, false, request::POST);
+		$delete		= request::variable('delete', false, false, request::POST);
 		$error = $data = array();
 
 		switch ($mode)
@@ -43,9 +43,9 @@ class ucp_groups
 		
 				$this->page_title = 'UCP_USERGROUPS_MEMBER';
 
-				if ($submit || isset($_POST['change_default']))
+				if ($submit || request::is_set_post('change_default'))
 				{
-					$action = (isset($_POST['change_default'])) ? 'change_default' : request_var('action', '');
+					$action = (request::is_set_post('change_default')) ? 'change_default' : request_var('action', '');
 					$group_id = ($action == 'change_default') ? request_var('default', 0) : request_var('selected', 0);
 
 					if (!$group_id)
@@ -297,7 +297,7 @@ class ucp_groups
 				$result = $db->sql_query($sql);
 
 				$group_id_ary = array();
-				$leader_count = $member_count = $pending_count = 0;
+
 				while ($row = $db->sql_fetchrow($result))
 				{
 					$block = ($row['group_leader']) ? 'leader' : (($row['user_pending']) ? 'pending' : 'member');
@@ -335,8 +335,7 @@ class ucp_groups
 
 						'U_VIEW_GROUP'	=> append_sid('memberlist', 'mode=group&amp;g=' . $row['group_id']),
 
-						'S_GROUP_DEFAULT'	=> ($row['group_id'] == $user->data['group_id']) ? true : false,
-						'S_ROW_COUNT'		=> ${$block . '_count'}++)
+						'S_GROUP_DEFAULT'	=> ($row['group_id'] == $user->data['group_id']) ? true : false)
 					);
 
 					$group_id_ary[] = $row['group_id'];
@@ -353,7 +352,6 @@ class ucp_groups
 					ORDER BY group_type DESC, group_name";
 				$result = $db->sql_query($sql);
 
-				$nonmember_count = 0;
 				while ($row = $db->sql_fetchrow($result))
 				{
 					switch ($row['group_type'])
@@ -389,9 +387,7 @@ class ucp_groups
 						'S_CAN_JOIN'	=> ($row['group_type'] == GROUP_OPEN || $row['group_type'] == GROUP_FREE) ? true : false,
 						'GROUP_COLOUR'	=> $row['group_colour'],
 
-						'U_VIEW_GROUP'	=> append_sid('memberlist', 'mode=group&amp;g=' . $row['group_id']),
-
-						'S_ROW_COUNT'	=> $nonmember_count++)
+						'U_VIEW_GROUP'	=> append_sid('memberlist', 'mode=group&amp;g=' . $row['group_id']))
 					);
 				}
 				$db->sql_freeresult($result);
@@ -411,8 +407,11 @@ class ucp_groups
 			case 'manage':
 
 				$this->page_title = 'UCP_USERGROUPS_MANAGE';
-				$action		= (isset($_POST['addusers'])) ? 'addusers' : request_var('action', '');
+				$action		= (request::is_set_post('addusers')) ? 'addusers' : request_var('action', '');
 				$group_id	= request_var('g', 0);
+				
+				include(PHPBB_ROOT_PATH . 'includes/functions_display.' . PHP_EXT);
+
 				add_form_key('ucp_groups');
 
 				if ($group_id)
@@ -437,7 +436,8 @@ class ucp_groups
 					
 					$group_name = $group_row['group_name'];
 					$group_type = $group_row['group_type'];
-					$avatar_img = (!empty($group_row['group_avatar'])) ? get_user_avatar($group_row['group_avatar'], $group_row['group_avatar_type'], $group_row['group_avatar_width'], $group_row['group_avatar_height'], 'GROUP_AVATAR') : '<img src="' . PHPBB_ROOT_PATH . PHPBB_ADMIN_PATH . 'images/no_avatar.gif" alt="" />';
+
+					$avatar_img = (!empty($group_row['group_avatar'])) ? get_user_avatar($group_row['group_avatar'], $group_row['group_avatar_type'], $group_row['group_avatar_width'], $group_row['group_avatar_height'], 'GROUP_AVATAR') : '<img src="' . PHPBB_ROOT_PATH . CONFIG_ADM_FOLDER . '/images/no_avatar.gif" alt="" />';
 
 					$template->assign_vars(array(
 						'GROUP_NAME'			=> ($group_type == GROUP_SPECIAL) ? $user->lang['G_' . $group_name] : $group_name,
@@ -456,8 +456,6 @@ class ucp_groups
 				switch ($action)
 				{
 					case 'edit':
-
-						include(PHPBB_ROOT_PATH . 'includes/functions_display.' . PHP_EXT);
 
 						if (!$group_id)
 						{
@@ -480,7 +478,7 @@ class ucp_groups
 
 						$data = $submit_ary = array();
 
-						$update	= (isset($_POST['update'])) ? true : false;
+						$update	= request::is_set_post('update');
 
 						$error = array();
 
@@ -503,7 +501,7 @@ class ucp_groups
 							$submit_ary = array(
 								'colour'		=> request_var('group_colour', ''),
 								'rank'			=> request_var('group_rank', 0),
-								'receive_pm'	=> isset($_REQUEST['group_receive_pm']) ? 1 : 0,
+								'receive_pm'	=> request::is_set('group_receive_pm') ? 1 : 0,
 								'message_limit'	=> request_var('group_message_limit', 0),
 								'max_recipients'=> request_var('group_max_recipients', 0),
 							);
@@ -670,7 +668,7 @@ class ucp_groups
 						$type_closed	= ($group_type == GROUP_CLOSED) ? ' checked="checked"' : '';
 						$type_hidden	= ($group_type == GROUP_HIDDEN) ? ' checked="checked"' : '';
 
-						$display_gallery = (isset($_POST['display_gallery'])) ? true : false;
+						$display_gallery = request::is_set_post('display_gallery');
 
 						if ($config['allow_avatar_local'] && $display_gallery)
 						{

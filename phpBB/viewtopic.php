@@ -348,7 +348,7 @@ if ($topic_data['forum_password'])
 }
 
 // Redirect to login or to the correct post upon emailed notification links
-if (isset($_GET['e']))
+if (request::is_set('e', request::GET))
 {
 	$jump_to = request_var('e', 0);
 
@@ -417,7 +417,7 @@ if ($sort_days)
 
 	$limit_posts_time = "AND p.post_time >= $min_post_time ";
 
-	if (isset($_POST['sort']))
+	if (request::is_set_post('sort'))
 	{
 		$start = 0;
 	}
@@ -446,7 +446,7 @@ if ($hilit_words)
 }
 
 // Make sure $start is set to the last page if it exceeds the amount
-if ($start < 0 || $start > $total_posts)
+if ($start < 0 || $start >= $total_posts)
 {
 	$start = ($start < 0) ? 0 : floor(($total_posts - 1) / $config['posts_per_page']) * $config['posts_per_page'];
 }
@@ -476,7 +476,7 @@ if (($config['email_enable'] || $config['jab_enable']) && $config['allow_topic_n
 // Bookmarks
 if ($config['allow_bookmarks'] && $user->data['is_registered'] && request_var('bookmark', 0))
 {
-	if (check_link_hash(request_var('hash', ''),"topic_$topic_id"))
+	if (check_link_hash(request_var('hash', ''), "topic_$topic_id"))
 	{
 		if (!$topic_data['bookmarked'])
 		{
@@ -673,10 +673,10 @@ if (!empty($topic_data['poll_start']))
 		// Cookie based guest tracking ... I don't like this but hum ho
 		// it's oft requested. This relies on "nice" users who don't feel
 		// the need to delete cookies to mess with results.
-		if (isset($_COOKIE[$config['cookie_name'] . '_poll_' . $topic_id]))
+		$cur_voted_list = request::variable($config['cookie_name'] . '_poll_' . $topic_id, '', false, request::COOKIE);
+		if (!empty($cur_voted_list))
 		{
-			$cur_voted_id = explode(',', $_COOKIE[$config['cookie_name'] . '_poll_' . $topic_id]);
-			$cur_voted_id = array_map('intval', $cur_voted_id);
+			$cur_voted_id = array_map('intval', explode(',', $cur_voted_list));
 		}
 	}
 
@@ -820,7 +820,7 @@ if (!empty($topic_data['poll_start']))
 	foreach ($poll_info as $poll_option)
 	{
 		$option_pct = ($poll_total > 0) ? $poll_option['poll_option_total'] / $poll_total : 0;
-		$option_pct_txt = sprintf("%.1d%%", ($option_pct * 100));
+		$option_pct_txt = sprintf("%.1d%%", round($option_pct * 100));
 
 		$template->assign_block_vars('poll_option', array(
 			'POLL_OPTION_ID' 		=> $poll_option['poll_option_id'],
@@ -1048,7 +1048,7 @@ while ($row = $db->sql_fetchrow($result))
 				'allow_pm'			=> 0,
 			);
 
-			get_user_rank($row['user_rank'], $row['user_posts'], $user_cache[$poster_id]['rank_title'], $user_cache[$poster_id]['rank_image'], $user_cache[$poster_id]['rank_image_src']);
+			get_user_rank($poster_id, $row['user_rank'], $row['user_posts'], $user_cache[$poster_id]['rank_title'], $user_cache[$poster_id]['rank_image'], $user_cache[$poster_id]['rank_image_src']);
 		}
 		else
 		{
@@ -1095,7 +1095,7 @@ while ($row = $db->sql_fetchrow($result))
 				'search'		=> ($auth->acl_get('u_search')) ? append_sid('search', "author_id=$poster_id&amp;sr=posts") : '',
 			);
 
-			get_user_rank($row['user_rank'], $row['user_posts'], $user_cache[$poster_id]['rank_title'], $user_cache[$poster_id]['rank_image'], $user_cache[$poster_id]['rank_image_src']);
+			get_user_rank($poster_id, $row['user_rank'], $row['user_posts'], $user_cache[$poster_id]['rank_title'], $user_cache[$poster_id]['rank_image'], $user_cache[$poster_id]['rank_image_src']);
 
 			if (!empty($row['user_allow_viewemail']) || $auth->acl_get('a_email'))
 			{
@@ -1580,12 +1580,15 @@ else if (!$all_marked_read)
 	}
 }
 
-// We overwrite $_REQUEST['f'] if there is no forum specified
+/**
+* @todo Do NOT overwrite a request variable.
+*/
+// We overwrite the 'f' request variable if there is no forum specified
 // to be able to display the correct online list.
 // One downside is that the user currently viewing this topic/post is not taken into account.
-if (empty($_REQUEST['f']))
+if (empty(request::variable('f', '')))
 {
-	$_REQUEST['f'] = $forum_id;
+	request::overwrite('f', $forum_id);
 }
 
 // Output the page

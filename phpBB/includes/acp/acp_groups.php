@@ -37,14 +37,14 @@ class acp_groups
 		include(PHPBB_ROOT_PATH . 'includes/functions_user.' . PHP_EXT);
 
 		// Check and set some common vars
-		$action		= (isset($_POST['add'])) ? 'add' : ((isset($_POST['addusers'])) ? 'addusers' : request_var('action', ''));
+		$action		= (request::is_set_post('add')) ? 'add' : ((request::is_set_post('addusers')) ? 'addusers' : request_var('action', ''));
 		$group_id	= request_var('g', 0);
 		$mark_ary	= request_var('mark', array(0));
 		$name_ary	= request_var('usernames', '', true);
 		$leader		= request_var('leader', 0);
 		$default	= request_var('default', 0);
 		$start		= request_var('start', 0);
-		$update		= (isset($_POST['update'])) ? true : false;
+		$update		= request::is_set_post('update');
 
 
 		// Clear some vars
@@ -87,7 +87,7 @@ class acp_groups
 				// Approve, demote or promote
 				$group_name = ($group_row['group_type'] == GROUP_SPECIAL) ? $user->lang['G_' . $group_row['group_name']] : $group_row['group_name'];
 				$error = group_user_attributes($action, $group_id, $mark_ary, false, $group_name);
-				
+
 				if (!$error)
 				{
 					switch ($action)
@@ -111,7 +111,7 @@ class acp_groups
 				{
 					trigger_error($user->lang[$error] . adm_back_link($this->u_action . '&amp;action=list&amp;g=' . $group_id), E_USER_WARNING);
 				}
-				
+
 			break;
 
 			case 'default':
@@ -179,13 +179,17 @@ class acp_groups
 
 			case 'deleteusers':
 			case 'delete':
+				if (!$group_id)
+				{
+					trigger_error($user->lang['NO_GROUP'] . adm_back_link($this->u_action), E_USER_WARNING);
+				}
+				else if ($action === 'delete' && $group_row['group_type'] == GROUP_SPECIAL)
+				{
+					trigger_error($user->lang['NO_AUTH_OPERATION'] . adm_back_link($this->u_action), E_USER_WARNING);
+				}
+
 				if (confirm_box(true))
 				{
-					if (!$group_id)
-					{
-						trigger_error($user->lang['NO_GROUP'] . adm_back_link($this->u_action), E_USER_WARNING);
-					}
-
 					$error = '';
 
 					switch ($action)
@@ -299,8 +303,8 @@ class acp_groups
 					$submit_ary = array(
 						'colour'			=> request_var('group_colour', ''),
 						'rank'				=> request_var('group_rank', 0),
-						'receive_pm'		=> isset($_REQUEST['group_receive_pm']) ? 1 : 0,
-						'legend'			=> isset($_REQUEST['group_legend']) ? 1 : 0,
+						'receive_pm'		=> request::is_set('group_receive_pm') ? 1 : 0,
+						'legend'			=> request::is_set('group_legend') ? 1 : 0,
 						'message_limit'		=> request_var('group_message_limit', 0),
 						'max_recipients'	=> request_var('group_max_recipients', 0),
 						'founder_manage'	=> 0,
@@ -308,7 +312,7 @@ class acp_groups
 
 					if ($user->data['user_type'] == USER_FOUNDER)
 					{
-						$submit_ary['founder_manage'] = isset($_REQUEST['group_founder_manage']) ? 1 : 0;
+						$submit_ary['founder_manage'] = request::is_set('group_founder_manage') ? 1 : 0;
 					}
 
 					if (!empty($_FILES['uploadfile']['tmp_name']) || $data['uploadurl'] || $data['remotelink'])
@@ -515,7 +519,7 @@ class acp_groups
 
 				$avatar_img = (!empty($group_row['group_avatar'])) ? get_user_avatar($group_row['group_avatar'], $group_row['group_avatar_type'], $group_row['group_avatar_width'], $group_row['group_avatar_height'], 'GROUP_AVATAR') : '<img src="' . PHPBB_ADMIN_PATH . 'images/no_avatar.gif" alt="" />';
 
-				$display_gallery = (isset($_POST['display_gallery'])) ? true : false;
+				$display_gallery = request::is_set_post('display_gallery');
 
 				if ($config['allow_avatar_local'] && $display_gallery)
 				{
@@ -748,14 +752,14 @@ class acp_groups
 			foreach ($row_ary as $group_id => $row)
 			{
 				$group_name = (!empty($user->lang['G_' . $row['group_name']]))? $user->lang['G_' . $row['group_name']] : $row['group_name'];
-				
+
 				$template->assign_block_vars('groups', array(
 					'U_LIST'		=> "{$this->u_action}&amp;action=list&amp;g=$group_id",
 					'U_EDIT'		=> "{$this->u_action}&amp;action=edit&amp;g=$group_id",
 					'U_DELETE'		=> ($auth->acl_get('a_groupdel')) ? "{$this->u_action}&amp;action=delete&amp;g=$group_id" : '',
 
 					'S_GROUP_SPECIAL'	=> ($row['group_type'] == GROUP_SPECIAL) ? true : false,
-					
+
 					'GROUP_NAME'	=> $group_name,
 					'TOTAL_MEMBERS'	=> $row['total_members'],
 					)

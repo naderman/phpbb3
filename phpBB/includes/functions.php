@@ -19,6 +19,20 @@ if (!defined('IN_PHPBB'))
 // Common global functions
 
 /**
+* Wrapper function of request::variable which exists for backwards
+* compatability.
+* See {@link request::variable request::variable} for documentation of this
+* function's use.
+* @param	bool	$cookie	This param is mapped to request::COOKIE as the last
+*							param for request::variable for backwards
+*							compatability reasons.
+*/
+function request_var($var_name, $default, $multibyte = false, $cookie = false)
+{
+	return request::variable($var_name, $default, $multibyte, ($cookie) ? request::COOKIE : request::REQUEST);
+}
+
+/**
 * set_var
 *
 * Set variable, used by {@link request_var the request_var function}
@@ -32,7 +46,7 @@ function set_var(&$result, $var, $type, $multibyte = false)
 
 	if ($type == 'string')
 	{
-		$result = trim(htmlspecialchars(str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $result), ENT_COMPAT, 'UTF-8'));
+		$result = trim(utf8_htmlspecialchars(str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $result)));
 
 		if (!empty($result))
 		{
@@ -53,122 +67,6 @@ function set_var(&$result, $var, $type, $multibyte = false)
 
 		$result = (STRIP) ? stripslashes($result) : $result;
 	}
-}
-
-/**
-* Central type safe input handling function.
-* All variables in GET or POST requests should be retrieved through this
-* function to maximise security.
-*
-* @param	string	$var_name	The name of the variable from the form that is
-*								to be retrieved.
-* @param	mixed	$default	A default value that is returned if the variable
-*								was not set. This function will always return a
-*								a value of the same type as the default.
-* @param	bool	$multibyte	If $default is a string this paramater has to be
-*								true if the variable may contain any UTF-8 characters
-*								Default is fault, causing all bytes outside the ASCII
-*								range (0-127) to be replaced with question marks
-* @param	bool	$cookie		True if the variable shall be retrieved from $_COOKIE
-*								instead of $_REQUEST. False by default.
-* @return	mixed				The value of $_REQUEST[$var_name] run through
-*								{@link set_var set_var} to ensure that the type is the
-*								the same as that of $default. If the variable is not set
-*								$default is returned.
-*/
-function request_var($var_name, $default, $multibyte = false, $cookie = false)
-{
-	if (!$cookie && isset($_COOKIE[$var_name]))
-	{
-		if (!isset($_GET[$var_name]) && !isset($_POST[$var_name]))
-		{
-			return (is_array($default)) ? array() : $default;
-		}
-		$_REQUEST[$var_name] = isset($_POST[$var_name]) ? $_POST[$var_name] : $_GET[$var_name];
-	}
-
-	if (!isset($_REQUEST[$var_name]) || (is_array($_REQUEST[$var_name]) && !is_array($default)) || (is_array($default) && !is_array($_REQUEST[$var_name])))
-	{
-		return (is_array($default)) ? array() : $default;
-	}
-
-	$var = $_REQUEST[$var_name];
-	if (!is_array($default))
-	{
-		$type = gettype($default);
-	}
-	else
-	{
-		list($key_type, $type) = each($default);
-		$type = gettype($type);
-		$key_type = gettype($key_type);
-		if ($type == 'array')
-		{
-			reset($default);
-			$default = current($default);
-			list($sub_key_type, $sub_type) = each($default);
-			$sub_type = gettype($sub_type);
-			$sub_type = ($sub_type == 'array') ? 'NULL' : $sub_type;
-			$sub_key_type = gettype($sub_key_type);
-		}
-	}
-
-	if (is_array($var))
-	{
-		$_var = $var;
-		$var = array();
-
-		foreach ($_var as $k => $v)
-		{
-			set_var($k, $k, $key_type);
-			if ($type == 'array' && is_array($v))
-			{
-				foreach ($v as $_k => $_v)
-				{
-					if (is_array($_v))
-					{
-						$_v = null;
-					}
-					set_var($_k, $_k, $sub_key_type);
-					set_var($var[$k][$_k], $_v, $sub_type, $multibyte);
-				}
-			}
-			else
-			{
-				if ($type == 'array' || is_array($v))
-				{
-					$v = null;
-				}
-				set_var($var[$k], $v, $type, $multibyte);
-			}
-		}
-	}
-	else
-	{
-		set_var($var, $var, $type, $multibyte);
-	}
-
-	return $var;
-}
-
-/**
-* Checks whether a certain variable was sent via POST.
-* To make sure that a request was sent using POST you should call this function
-* on at least one variable. The function will perform referrer validation
-* as an additional measure against CSRF.
-*
-* @param	string	$name	The name of the form variable which should have a
-*							_p suffix to indicate the check in the code that
-*							creates the form too.
-* @return	bool			True if the variable was set in a POST request,
-*							false otherwise.
-*/
-function isset_post($name)
-{
-	/**
-	* @todo validate referrer
-	*/
-	return isset($_POST[$name]);
 }
 
 /**
@@ -926,7 +824,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 			}
 			else if ($config['load_anon_lastread'] || $user->data['is_registered'])
 			{
-				$tracking_topics = (isset($_COOKIE[$config['cookie_name'] . '_track'])) ? ((STRIP) ? stripslashes($_COOKIE[$config['cookie_name'] . '_track']) : $_COOKIE[$config['cookie_name'] . '_track']) : '';
+				$tracking_topics = request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE);
 				$tracking_topics = ($tracking_topics) ? tracking_unserialize($tracking_topics) : array();
 
 				unset($tracking_topics['tf']);
@@ -935,7 +833,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 				$tracking_topics['l'] = base_convert(time() - $config['board_startdate'], 10, 36);
 
 				$user->set_cookie('track', tracking_serialize($tracking_topics), time() + 31536000);
-				$_COOKIE[$config['cookie_name'] . '_track'] = (STRIP) ? addslashes(tracking_serialize($tracking_topics)) : tracking_serialize($tracking_topics);
+				request::overwrite($config['cookie_name'] . '_track', tracking_serialize($tracking_topics), request::COOKIE);
 
 				unset($tracking_topics);
 
@@ -1005,7 +903,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 		}
 		else if ($config['load_anon_lastread'] || $user->data['is_registered'])
 		{
-			$tracking = (isset($_COOKIE[$config['cookie_name'] . '_track'])) ? ((STRIP) ? stripslashes($_COOKIE[$config['cookie_name'] . '_track']) : $_COOKIE[$config['cookie_name'] . '_track']) : '';
+			$tracking = request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE);
 			$tracking = ($tracking) ? tracking_unserialize($tracking) : array();
 
 			foreach ($forum_id as $f_id)
@@ -1036,7 +934,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 			}
 
 			$user->set_cookie('track', tracking_serialize($tracking), time() + 31536000);
-			$_COOKIE[$config['cookie_name'] . '_track'] = (STRIP) ? addslashes(tracking_serialize($tracking)) : tracking_serialize($tracking);
+			request::overwrite($config['cookie_name'] . '_track', tracking_serialize($tracking), request::COOKIE);
 
 			unset($tracking);
 		}
@@ -1077,7 +975,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 		}
 		else if ($config['load_anon_lastread'] || $user->data['is_registered'])
 		{
-			$tracking = (isset($_COOKIE[$config['cookie_name'] . '_track'])) ? ((STRIP) ? stripslashes($_COOKIE[$config['cookie_name'] . '_track']) : $_COOKIE[$config['cookie_name'] . '_track']) : '';
+			$tracking = request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE);
 			$tracking = ($tracking) ? tracking_unserialize($tracking) : array();
 
 			$topic_id36 = base_convert($topic_id, 10, 36);
@@ -1092,7 +990,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 
 			// If the cookie grows larger than 10000 characters we will remove the smallest value
 			// This can result in old topics being unread - but most of the time it should be accurate...
-			if (isset($_COOKIE[$config['cookie_name'] . '_track']) && strlen($_COOKIE[$config['cookie_name'] . '_track']) > 10000)
+			if (strlen(request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE)) > 10000)
 			{
 				//echo 'Cookie grown too large' . print_r($tracking, true);
 
@@ -1132,7 +1030,7 @@ function markread($mode, $forum_id = false, $topic_id = false, $post_time = 0, $
 			}
 
 			$user->set_cookie('track', tracking_serialize($tracking), time() + 31536000);
-			$_COOKIE[$config['cookie_name'] . '_track'] = (STRIP) ? addslashes(tracking_serialize($tracking)) : tracking_serialize($tracking);
+			request::overwrite($config['cookie_name'] . '_track', tracking_serialize($tracking));
 		}
 
 		return;
@@ -1314,7 +1212,7 @@ function get_complete_topic_tracking($forum_id, $topic_ids, $global_announce_lis
 
 		if (!isset($tracking_topics) || !sizeof($tracking_topics))
 		{
-			$tracking_topics = (isset($_COOKIE[$config['cookie_name'] . '_track'])) ? ((STRIP) ? stripslashes($_COOKIE[$config['cookie_name'] . '_track']) : $_COOKIE[$config['cookie_name'] . '_track']) : '';
+			$tracking_topics = request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE);
 			$tracking_topics = ($tracking_topics) ? tracking_unserialize($tracking_topics) : array();
 		}
 
@@ -1397,7 +1295,7 @@ function update_forum_tracking_info($forum_id, $forum_last_post_time, $f_mark_ti
 		}
 		else if ($config['load_anon_lastread'] || $user->data['is_registered'])
 		{
-			$tracking_topics = (isset($_COOKIE[$config['cookie_name'] . '_track'])) ? ((STRIP) ? stripslashes($_COOKIE[$config['cookie_name'] . '_track']) : $_COOKIE[$config['cookie_name'] . '_track']) : '';
+			$tracking_topics = request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE);
 			$tracking_topics = ($tracking_topics) ? tracking_unserialize($tracking_topics) : array();
 
 			if (!$user->data['is_registered'])
@@ -2218,7 +2116,7 @@ function check_form_key($form_name, $timespan = false, $return_page = '', $trigg
 		$timespan = ($config['form_token_lifetime'] == -1) ? -1 : max(30, $config['form_token_lifetime']);
 	}
 
-	if (isset($_POST['creation_time']) && isset($_POST['form_token']))
+	if (request::is_set_post('creation_time') && request::is_set_post('form_token'))
 	{
 		$creation_time	= abs(request_var('creation_time', 0));
 		$token = request_var('form_token', '');
@@ -2263,16 +2161,16 @@ function confirm_box($check, $title = '', $hidden = '', $html_body = 'confirm_bo
 {
 	global $user, $template, $db;
 
-	if (isset($_POST['cancel']))
+	if (request::is_set_post('cancel'))
 	{
 		return false;
 	}
 
 	$confirm = false;
-	if (isset($_POST['confirm']))
+	if (request::is_set_post('confirm'))
 	{
 		// language frontier
-		if ($_POST['confirm'] === $user->lang['YES'])
+		if (request_var('confirm', '') === $user->lang['YES'])
 		{
 			$confirm = true;
 		}
@@ -2394,7 +2292,7 @@ function login_box($redirect = '', $l_explain = '', $l_success = '', $admin = fa
 		trigger_error('NO_AUTH_ADMIN');
 	}
 
-	if (isset($_POST['login']))
+	if (request::is_set_post('login'))
 	{
 		// Get credential
 		if ($admin)
@@ -2418,8 +2316,8 @@ function login_box($redirect = '', $l_explain = '', $l_success = '', $admin = fa
 		}
 
 		$username	= request_var('username', '', true);
-		$autologin	= (!empty($_POST['autologin'])) ? true : false;
-		$viewonline = (!empty($_POST['viewonline'])) ? 0 : 1;
+		$autologin	= request::variable('autologin', false, false, request::POST);
+		$viewonline = (request::variable('viewonline', false, false, request::POST)) ? 0 : 1;
 		$admin 		= ($admin) ? 1 : 0;
 		$viewonline = ($admin) ? $user->data['session_viewonline'] : $viewonline;
 
@@ -2502,7 +2400,7 @@ function login_box($redirect = '', $l_explain = '', $l_success = '', $admin = fa
 					$user->lang[$result['error_msg']],
 					($config['email_enable']) ? '<a href="' . append_sid('ucp', 'mode=sendpassword') . '">' : '',
 					($config['email_enable']) ? '</a>' : '',
-					($config['board_contact']) ? '<a href="mailto:' . htmlspecialchars($config['board_contact']) . '">' : '',
+					($config['board_contact']) ? '<a href="mailto:' . utf8_htmlspecialchars($config['board_contact']) . '">' : '',
 					($config['board_contact']) ? '</a>' : ''
 				);
 			break;
@@ -2514,7 +2412,7 @@ function login_box($redirect = '', $l_explain = '', $l_success = '', $admin = fa
 				// Assign admin contact to some error messages
 				if ($result['error_msg'] == 'LOGIN_ERROR_USERNAME' || $result['error_msg'] == 'LOGIN_ERROR_PASSWORD')
 				{
-					$err = (!$config['board_contact']) ? sprintf($user->lang[$result['error_msg']], '', '') : sprintf($user->lang[$result['error_msg']], '<a href="mailto:' . htmlspecialchars($config['board_contact']) . '">', '</a>');
+					$err = (!$config['board_contact']) ? sprintf($user->lang[$result['error_msg']], '', '') : sprintf($user->lang[$result['error_msg']], '<a href="mailto:' . utf8_htmlspecialchars($config['board_contact']) . '">', '</a>');
 				}
 
 			break;
@@ -2532,7 +2430,7 @@ function login_box($redirect = '', $l_explain = '', $l_success = '', $admin = fa
 			$redirect .= ($user->page['page_dir']) ? $user->page['page_dir'] . '/' : '';
 		}
 
-		$redirect .= $user->page['page_name'] . (($user->page['query_string']) ? '?' . htmlspecialchars($user->page['query_string']) : '');
+		$redirect .= $user->page['page_name'] . (($user->page['query_string']) ? '?' . utf8_htmlspecialchars($user->page['query_string']) : '');
 	}
 
 	// Assign credential for username/password pair
@@ -2692,7 +2590,7 @@ function _build_hidden_fields($key, $value, $specialchar, $stripslashes)
 	if (!is_array($value))
 	{
 		$value = ($stripslashes) ? stripslashes($value) : $value;
-		$value = ($specialchar) ? htmlspecialchars($value, ENT_COMPAT, 'UTF-8') : $value;
+		$value = ($specialchar) ? utf8_htmlspecialchars($value) : $value;
 
 		$hidden_fields .= '<input type="hidden" name="' . $key . '" value="' . $value . '" />' . "\n";
 	}
@@ -2701,7 +2599,7 @@ function _build_hidden_fields($key, $value, $specialchar, $stripslashes)
 		foreach ($value as $_key => $_value)
 		{
 			$_key = ($stripslashes) ? stripslashes($_key) : $_key;
-			$_key = ($specialchar) ? htmlspecialchars($_key, ENT_COMPAT, 'UTF-8') : $_key;
+			$_key = ($specialchar) ? utf8_htmlspecialchars($_key) : $_key;
 
 			$hidden_fields .= _build_hidden_fields($key . '[' . $_key . ']', $_value, $specialchar, $stripslashes);
 		}
@@ -2726,7 +2624,7 @@ function build_hidden_fields($field_ary, $specialchar = false, $stripslashes = f
 	foreach ($field_ary as $name => $vars)
 	{
 		$name = ($stripslashes) ? stripslashes($name) : $name;
-		$name = ($specialchar) ? htmlspecialchars($name, ENT_COMPAT, 'UTF-8') : $name;
+		$name = ($specialchar) ? utf8_htmlspecialchars($name) : $name;
 
 		$s_hidden_fields .= _build_hidden_fields($name, $vars, $specialchar, $stripslashes);
 	}
@@ -3289,15 +3187,15 @@ function page_header($page_title = '', $display_online_list = true)
 	// Get users online list ... if required
 	$l_online_users = $online_userlist = $l_online_record = '';
 
+	$forum = request_var('f', 0);
+
 	if ($config['load_online'] && $config['load_online_time'] && $display_online_list)
 	{
 		$logged_visible_online = $logged_hidden_online = $guests_online = $prev_user_id = 0;
 		$prev_session_ip = $reading_sql = '';
 
-		if (!empty($_REQUEST['f']))
+		if ($forum)
 		{
-			$f = request_var('f', 0);
-
 			$reading_sql = ' AND s.session_page ' . $db->sql_like_expression("{$db->any_char}_f_={$f}x{$db->any_char}");
 		}
 
@@ -3384,7 +3282,7 @@ function page_header($page_title = '', $display_online_list = true)
 			$online_userlist = $user->lang['NO_ONLINE_USERS'];
 		}
 
-		if (empty($_REQUEST['f']))
+		if (!$forum)
 		{
 			$online_userlist = $user->lang['REGISTERED_USERS'] . ' ' . $online_userlist;
 		}
@@ -3547,9 +3445,6 @@ function page_header($page_title = '', $display_online_list = true)
 		'S_BOARD_DISABLED'		=> ($config['board_disable']) ? true : false,
 		'S_REGISTERED_USER'		=> (!empty($user->data['is_registered'])) ? true : false,
 		'S_IS_BOT'				=> (!empty($user->data['is_bot'])) ? true : false,
-		'S_IN_SEARCH'			=> false,
-		'S_VIEWTOPIC'			=> false,
-		'S_VIEWFORUM'			=> false,
 		'S_USER_PM_POPUP'		=> $user->optionget('popuppm'),
 		'S_USER_LANG'			=> $user_lang,
 		'S_USER_BROWSER'		=> (isset($user->data['session_browser'])) ? $user->data['session_browser'] : $user->lang['UNKNOWN_BROWSER'],
@@ -3608,7 +3503,7 @@ function page_footer($run_cron = true)
 		$mtime = explode(' ', microtime());
 		$totaltime = $mtime[0] + $mtime[1] - $starttime;
 
-		if (!empty($_REQUEST['explain']) && $auth->acl_get('a_') && defined('DEBUG_EXTRA') && method_exists($db, 'sql_report'))
+		if (request::variable('explain', false) && $auth->acl_get('a_') && defined('DEBUG_EXTRA') && method_exists($db, 'sql_report'))
 		{
 			$db->sql_report('display');
 		}
@@ -3716,6 +3611,12 @@ function garbage_collection()
 function exit_handler()
 {
 	global $phpbb_hook, $config;
+
+	// needs to be run prior to the hook
+	if (request::super_globals_disabled())
+	{
+		request::enable_super_globals();
+	}
 
 	if (!empty($phpbb_hook) && $phpbb_hook->call_hook(__FUNCTION__))
 	{

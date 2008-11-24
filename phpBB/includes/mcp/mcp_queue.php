@@ -242,6 +242,17 @@ class mcp_queue
 				}
 
 				$forum_list_approve = get_forum_list('m_approve', false, true);
+				$forum_list_read = array_flip(get_forum_list('f_read', true, true)); // Flipped so we can isset() the forum IDs
+
+				// Remove forums we cannot read
+				foreach ($forum_list_approve as $k => $forum_data)
+				{
+					if (!isset($forum_list_read[$forum_data['forum_id']]))
+					{
+						unset($forum_list_approve[$k]);
+					}
+				}
+				unset($forum_list_read);
 
 				if (!$forum_id)
 				{
@@ -473,7 +484,7 @@ function approve_post($post_id_list, $id, $mode)
 
 	if (confirm_box(true))
 	{
-		$notify_poster = (isset($_REQUEST['notify_poster'])) ? true : false;
+		$notify_poster = request::is_set('notify_poster');
 
 		// If Topic -> total_topics = total_topics+1, total_posts = total_posts+1, forum_topics = forum_topics+1, forum_posts = forum_posts+1
 		// If Post -> total_posts = total_posts+1, forum_posts = forum_posts+1, topic_replies = topic_replies+1
@@ -792,7 +803,7 @@ function disapprove_post($post_id_list, $id, $mode)
 		'redirect'		=> $redirect)
 	);
 
-	$notify_poster = (isset($_REQUEST['notify_poster'])) ? true : false;
+	$notify_poster = request::is_set('notify_poster');
 	$disapprove_reason = '';
 
 	if ($reason_id)
@@ -807,7 +818,6 @@ function disapprove_post($post_id_list, $id, $mode)
 		if (!$row || (!$reason && strtolower($row['reason_title']) == 'other'))
 		{
 			$additional_msg = $user->lang['NO_REASON_DISAPPROVAL'];
-			unset($_POST['confirm']);
 		}
 		else
 		{
@@ -826,7 +836,7 @@ function disapprove_post($post_id_list, $id, $mode)
 
 	$post_info = get_post_data($post_id_list, 'm_approve');
 
-	if (confirm_box(true))
+	if (!$additional_message && confirm_box(true))
 	{
 
 		// If Topic -> forum_topics_real -= 1

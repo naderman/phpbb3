@@ -195,7 +195,7 @@ class mcp_warn
 
 		$post_id = request_var('p', 0);
 		$forum_id = request_var('f', 0);
-		$notify = (isset($_REQUEST['notify_user'])) ? true : false;
+		$notify = request::is_set('notify_user');
 		$warning = utf8_normalize_nfc(request_var('warning', '', true));
 
 		$sql = 'SELECT u.*, p.*
@@ -243,6 +243,25 @@ class mcp_warn
 		{
 			$this->p_master->adjust_url("&amp;f=$forum_id&amp;p=$post_id");
 			$this->u_action .= "&amp;f=$forum_id&amp;p=$post_id";
+		}
+
+		// Check if can send a notification
+		if ($config['allow_privmsg'])
+		{
+			$auth2 = new auth();
+			$auth2->acl($user_row);
+			$s_can_notify = ($auth2->acl_get('u_readpm')) ? true : false;
+			unset($auth2);
+		}
+		else
+		{
+			$s_can_notify = false;
+		}
+
+		// Prevent against clever people
+		if ($notify && !$s_can_notify)
+		{
+			$notify = false;
 		}
 
 		if ($warning && $action == 'add_warning')
@@ -303,6 +322,8 @@ class mcp_warn
 			'RANK_IMG'			=> $rank_img,
 
 			'L_WARNING_POST_DEFAULT'	=> sprintf($user->lang['WARNING_POST_DEFAULT'], generate_board_url() . '/viewtopic.' . PHP_EXT . "?f=$forum_id&amp;p=$post_id#p$post_id"),
+
+			'S_CAN_NOTIFY'		=> $s_can_notify,
 		));
 	}
 
@@ -316,7 +337,7 @@ class mcp_warn
 
 		$user_id = request_var('u', 0);
 		$username = request_var('username', '', true);
-		$notify = (isset($_REQUEST['notify_user'])) ? true : false;
+		$notify = request::is_set('notify_user');
 		$warning = utf8_normalize_nfc(request_var('warning', '', true));
 
 		$sql_where = ($user_id) ? "user_id = $user_id" : "username_clean = '" . $db->sql_escape(utf8_clean_string($username)) . "'";
@@ -345,6 +366,25 @@ class mcp_warn
 		{
 			$this->p_master->adjust_url('&amp;u=' . $user_id);
 			$this->u_action .= "&amp;u=$user_id";
+		}
+
+		// Check if can send a notification
+		if ($config['allow_privmsg'])
+		{
+			$auth2 = new auth();
+			$auth2->acl($user_row);
+			$s_can_notify = ($auth2->acl_get('u_readpm')) ? true : false;
+			unset($auth2);
+		}
+		else
+		{
+			$s_can_notify = false;
+		}
+
+		// Prevent against clever people
+		if ($notify && !$s_can_notify)
+		{
+			$notify = false;
 		}
 
 		if ($warning && $action == 'add_warning')
@@ -385,6 +425,8 @@ class mcp_warn
 
 			'AVATAR_IMG'		=> $avatar_img,
 			'RANK_IMG'			=> $rank_img,
+
+			'S_CAN_NOTIFY'		=> $s_can_notify,
 		));
 
 		return $user_id;

@@ -33,7 +33,10 @@ function mcp_forum_view($id, $mode, $action, $forum_info)
 	if ($merge_select)
 	{
 		// Fixes a "bug" that makes forum_view use the same ordering as topic_view
-		unset($_POST['sk'], $_POST['sd'], $_REQUEST['sk'], $_REQUEST['sd']);
+		request::overwrite('sk', null, request::POST);
+		request::overwrite('sd', null, request::POST);
+		request::overwrite('sk', null, request::REQUEST);
+		request::overwrite('sd', null, request::REQUEST);
 	}
 
 	$forum_id			= $forum_info['forum_id'];
@@ -245,7 +248,7 @@ function mcp_forum_view($id, $mode, $action, $forum_info)
 			'LAST_POST_SUBJECT'	=> $row['topic_last_post_subject'],
 			'LAST_VIEW_TIME'	=> $user->format_date($row['topic_last_view_time']),
 
-			'S_TOPIC_REPORTED'		=> (!empty($row['topic_reported']) && $auth->acl_get('m_report', $row['forum_id'])) ? true : false,
+			'S_TOPIC_REPORTED'		=> (!empty($row['topic_reported']) && empty($row['topic_moved_id']) && $auth->acl_get('m_report', $row['forum_id'])) ? true : false,
 			'S_TOPIC_UNAPPROVED'	=> $topic_unapproved,
 			'S_POSTS_UNAPPROVED'	=> $posts_unapproved,
 			'S_UNREAD_TOPIC'		=> $unread_topic,

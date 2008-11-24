@@ -68,7 +68,7 @@ function display_forums($root_data = '', $display_moderators = true, $return_mod
 	}
 	else if ($config['load_anon_lastread'] || $user->data['is_registered'])
 	{
-		$tracking_topics = (isset($_COOKIE[$config['cookie_name'] . '_track'])) ? ((STRIP) ? stripslashes($_COOKIE[$config['cookie_name'] . '_track']) : $_COOKIE[$config['cookie_name'] . '_track']) : '';
+		$tracking_topics = request::variable($config['cookie_name'] . '_track', '', false, request::COOKIE);
 		$tracking_topics = ($tracking_topics) ? tracking_unserialize($tracking_topics) : array();
 
 		if (!$user->data['is_registered'])
@@ -1044,7 +1044,7 @@ function watch_topic_forum($mode, &$s_watching, $user_id, $forum_id, $topic_id, 
 		if (!is_null($notify_status) && $notify_status !== '')
 		{
 
-			if (isset($_GET['unwatch']))
+			if (request::is_set('unwatch', request::GET))
 			{
 				$uid = request_var('uid', 0);
 				if ($uid != $user_id)
@@ -1053,7 +1053,7 @@ function watch_topic_forum($mode, &$s_watching, $user_id, $forum_id, $topic_id, 
 					$message = $user->lang['ERR_UNWATCHING'] . '<br /><br />' . sprintf($user->lang['RETURN_' . strtoupper($mode)], '<a href="' . $redirect_url . '">', '</a>');
 					trigger_error($message);
 				}
-				if ($_GET['unwatch'] == $mode)
+				if (request::variable('unwatch', '', false, request::GET) == $mode)
 				{
 					$is_watching = 0;
 
@@ -1086,12 +1086,12 @@ function watch_topic_forum($mode, &$s_watching, $user_id, $forum_id, $topic_id, 
 		}
 		else
 		{
-			if (isset($_GET['watch']))
+			if (request::is_set('watch', request::GET))
 			{
 				$token = request_var('hash', '');
 				$redirect_url = append_sid("view$mode", "$u_url=$match_id&amp;start=$start");
 
-				if ($_GET['watch'] == $mode && check_link_hash($token, "{$mode}_$match_id"))
+				if (request::variable('watch', '', false, request::GET) == $mode && check_link_hash($token, "{$mode}_$match_id"))
 				{
 					$is_watching = true;
 
@@ -1117,7 +1117,7 @@ function watch_topic_forum($mode, &$s_watching, $user_id, $forum_id, $topic_id, 
 	}
 	else
 	{
-		if (isset($_GET['unwatch']) && $_GET['unwatch'] == $mode)
+		if (request::variable('unwatch', '', false, request::GET) == $mode)
 		{
 			login_box();
 		}
@@ -1141,6 +1141,7 @@ function watch_topic_forum($mode, &$s_watching, $user_id, $forum_id, $topic_id, 
 /**
 * Get user rank title and image
 *
+* @param int $user_id the users user id
 * @param int $user_rank the current stored users rank id
 * @param int $user_posts the users number of posts
 * @param string &$rank_title the rank title will be stored here after execution
@@ -1148,7 +1149,7 @@ function watch_topic_forum($mode, &$s_watching, $user_id, $forum_id, $topic_id, 
 * @param string &$rank_img_src the rank image source is stored here after execution
 *
 */
-function get_user_rank($user_rank, $user_posts, &$rank_title, &$rank_img, &$rank_img_src)
+function get_user_rank($user_id, $user_rank, $user_posts, &$rank_title, &$rank_img, &$rank_img_src)
 {
 	global $ranks, $config;
 
@@ -1164,7 +1165,7 @@ function get_user_rank($user_rank, $user_posts, &$rank_title, &$rank_img, &$rank
 		$rank_img = (!empty($ranks['special'][$user_rank]['rank_image'])) ? '<img src="' . PHPBB_ROOT_PATH . $config['ranks_path'] . '/' . $ranks['special'][$user_rank]['rank_image'] . '" alt="' . $ranks['special'][$user_rank]['rank_title'] . '" title="' . $ranks['special'][$user_rank]['rank_title'] . '" />' : '';
 		$rank_img_src = (!empty($ranks['special'][$user_rank]['rank_image'])) ? PHPBB_ROOT_PATH . $config['ranks_path'] . '/' . $ranks['special'][$user_rank]['rank_image'] : '';
 	}
-	else
+	else if ($user_id != ANONYMOUS)
 	{
 		if (!empty($ranks['normal']))
 		{

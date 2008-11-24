@@ -56,7 +56,7 @@ switch ($mode)
 }
 
 $start	= request_var('start', 0);
-$submit = (isset($_POST['submit'])) ? true : false;
+$submit = request::is_set_post('submit');
 
 $default_key = 'c';
 $sort_key = request_var('sk', $default_key);
@@ -238,7 +238,7 @@ switch ($mode)
 			}
 
 			$rank_title = $rank_img = '';
-			get_user_rank($row['user_rank'], $row['user_posts'], $rank_title, $rank_img, $rank_img_src);
+			get_user_rank($row['user_id'], $row['user_rank'], $row['user_posts'], $rank_title, $rank_img, $rank_img_src);
 
 			$template->assign_block_vars($which_row, array(
 				'USER_ID'		=> $row['user_id'],
@@ -741,8 +741,8 @@ switch ($mode)
 		$email_lang = request_var('lang', $config['default_lang']);
 		$subject	= utf8_normalize_nfc(request_var('subject', '', true));
 		$message	= utf8_normalize_nfc(request_var('message', '', true));
-		$cc			= (isset($_POST['cc_email'])) ? true : false;
-		$submit		= (isset($_POST['submit'])) ? true : false;
+		$cc			= request::is_set_post('cc_email');
+		$submit		= request::is_set_post('submit');
 
 		if ($submit)
 		{
@@ -942,10 +942,13 @@ switch ($mode)
 		$field			= request_var('field', '');
 		$select_single 	= request_var('select_single', false);
 
+		// Search URL parameters, if any of these are in the URL we do a search
+		$search_params = array('username', 'email', 'icq', 'aim', 'yahoo', 'msn', 'jabber', 'search_group_id', 'joined_select', 'active_select', 'count_select', 'joined', 'active', 'count', 'ip');
+
 		// We validate form and field here, only id/class allowed
 		$form = (!preg_match('/^[a-z0-9_-]+$/i', $form)) ? '' : $form;
 		$field = (!preg_match('/^[a-z0-9_-]+$/i', $field)) ? '' : $field;
-		if ($mode == 'searchuser' && ($config['load_search'] || $auth->acl_get('a_')))
+		if (($mode == 'searchuser' || sizeof(array_intersect(request::variable_names(request::GET), $search_params)) > 0) && ($config['load_search'] || $auth->acl_get('a_')))
 		{
 			$username	= request_var('username', '', true);
 			$email		= strtolower(request_var('email', ''));
@@ -1235,7 +1238,7 @@ switch ($mode)
 
 		foreach ($check_params as $key => $call)
 		{
-			if (!isset($_REQUEST[$key]))
+			if (!request::is_set($key))
 			{
 				continue;
 			}
@@ -1249,14 +1252,17 @@ switch ($mode)
 				$sort_params[] = $param;
 			}
 		}
-		$u_hide_find_member = append_sid('memberlist', "start=$start" . implode('&amp;', $params));
+		$u_hide_find_member = append_sid('memberlist', "start=$start" . (!empty($params) ? '&amp;' . implode('&amp;', $params) : ''));
 
-		$params[] = "mode=$mode";
+		if ($mode)
+		{
+			$params[] = "mode=$mode";
+		}
 		$sort_params[] = "mode=$mode";
 		$pagination_url = append_sid('memberlist', implode('&amp;', $params));
 		$sort_url = append_sid('memberlist', implode('&amp;', $sort_params));
 
-		unset($params, $sort_params);
+		unset($search_params, $sort_params);
 
 		// Some search user specific data
 		if ($mode == 'searchuser' && ($config['load_search'] || $auth->acl_get('a_')))
@@ -1265,11 +1271,21 @@ switch ($mode)
 			$s_group_select = '<option value="0"' . ((!$group_selected) ? ' selected="selected"' : '') . '>&nbsp;</option>';
 			$group_ids = array();
 
+			/**
+			* @todo add this to a separate function (function is responsible for returning the groups the user is able to see based on the users group membership)
+			*/
+
 			if ($auth->acl_gets('a_group', 'a_groupadd', 'a_groupdel'))
 			{
 				$sql = 'SELECT group_id, group_name, group_type
-					FROM ' . GROUPS_TABLE . '
-					ORDER BY group_name ASC';
+					FROM ' . GROUPS_TABLE;
+
+				if (!$config['coppa_enable'])
+				{
+					$sql .= " WHERE group_name <> 'REGISTERED_COPPA'";
+				}
+
+				$sql .= ' ORDER BY group_name ASC';
 			}
 			else
 			{
@@ -1281,8 +1297,14 @@ switch ($mode)
 							AND ug.user_id = ' . $user->data['user_id'] . '
 							AND ug.user_pending = 0
 						)
-					WHERE (g.group_type <> ' . GROUP_HIDDEN . ' OR ug.user_id = ' . $user->data['user_id'] . ')
-					ORDER BY g.group_name ASC';
+					WHERE (g.group_type <> ' . GROUP_HIDDEN . ' OR ug.user_id = ' . $user->data['user_id'] . ')';
+
+				if (!$config['coppa_enable'])
+				{
+					$sql .= " WHERE group_name <> 'REGISTERED_COPPA'";
+				}
+
+				$sql .= ' ORDER BY g.group_name ASC';
 			}
 			$result = $db->sql_query($sql);
 
@@ -1463,7 +1485,7 @@ switch ($mode)
 			'JABBER_IMG'	=> $user->img('icon_contact_jabber', $user->lang['JABBER']),
 			'SEARCH_IMG'	=> $user->img('icon_user_search', $user->lang['SEARCH']),
 
-			'U_FIND_MEMBER'			=> ($config['load_search'] || $auth->acl_get('a_')) ? append_sid('memberlist', 'mode=searchuser' . (($start) ? "&amp;start=$start" : '')) : '',
+			'U_FIND_MEMBER'			=> ($config['load_search'] || $auth->acl_get('a_')) ? append_sid('memberlist', 'mode=searchuser' . (($start) ? "&amp;start=$start" : '') . (!empty($params) ? '&amp;' . implode('&amp;', $params) : '')) : '',
 			'U_HIDE_FIND_MEMBER'	=> ($mode == 'searchuser') ? $u_hide_find_member : '',
 			'U_SORT_USERNAME'		=> $sort_url . '&amp;sk=a&amp;sd=' . (($sort_key == 'a' && $sort_dir == 'a') ? 'd' : 'a'),
 			'U_SORT_FROM'			=> $sort_url . '&amp;sk=b&amp;sd=' . (($sort_key == 'b' && $sort_dir == 'a') ? 'd' : 'a'),
@@ -1511,7 +1533,7 @@ function show_profile($data)
 	$user_id = $data['user_id'];
 
 	$rank_title = $rank_img = $rank_img_src = '';
-	get_user_rank($data['user_rank'], $data['user_posts'], $rank_title, $rank_img, $rank_img_src);
+	get_user_rank($user_id, $data['user_rank'], $data['user_posts'], $rank_title, $rank_img, $rank_img_src);
 
 	if (!empty($data['user_allow_viewemail']) || $auth->acl_get('a_email'))
 	{

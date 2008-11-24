@@ -28,10 +28,44 @@ class p_master
 	var $p_mode;
 	var $p_parent;
 
+	var $include_path = false;
 	var $active_module = false;
 	var $active_module_row_id = false;
 	var $acl_forum_id = false;
 	var $module_ary = array();
+
+	/**
+	* Constuctor
+	* Set module include path
+	*/
+	public function __construct($include_path = false)
+	{
+		$this->include_path = ($include_path !== false) ? $include_path : PHPBB_ROOT_PATH . 'includes/';
+
+		// Make sure the path ends with /
+		if (substr($this->include_path, -1) !== '/')
+		{
+			$this->include_path .= '/';
+		}
+	}
+
+	/**
+	* Set custom include path for modules
+	* Schema for inclusion is include_path . modulebase
+	*
+	* @param string $include_path include path to be used.
+	* @access public
+	*/
+	public function set_custom_include_path($include_path)
+	{
+		$this->include_path = $include_path;
+
+		// Make sure the path ends with /
+		if (substr($this->include_path, -1) !== '/')
+		{
+			$this->include_path .= '/';
+		}
+	}
 
 	/**
 	* List modules
@@ -324,7 +358,7 @@ class p_master
 		$forum_id = ($forum_id === false) ? $this->acl_forum_id : $forum_id;
 
 		$is_auth = false;
-		eval('$is_auth = (int) (' . preg_replace(array('#acl_([a-z0-9_]+)(,\$id)?#', '#\$id#', '#aclf_([a-z0-9_]+)#', '#cfg_([a-z0-9_]+)#', '#request_([a-zA-Z0-9_]+)#'), array('(int) $auth->acl_get(\'\\1\'\\2)', '(int) $forum_id', '(int) $auth->acl_getf_global(\'\\1\')', '(int) $config[\'\\1\']', '!empty($_REQUEST[\'\\1\'])'), $module_auth) . ');');
+		eval('$is_auth = (int) (' . preg_replace(array('#acl_([a-z0-9_]+)(,\$id)?#', '#\$id#', '#aclf_([a-z0-9_]+)#', '#cfg_([a-z0-9_]+)#', '#request_([a-zA-Z0-9_]+)#'), array('(int) $auth->acl_get(\'\\1\'\\2)', '(int) $forum_id', '(int) $auth->acl_getf_global(\'\\1\')', '(int) $config[\'\\1\']', 'request::variable(\'\\1\', false)'), $module_auth) . ');');
 
 		return $is_auth;
 	}
@@ -394,7 +428,7 @@ class p_master
 	{
 		global $user;
 
-		$module_path = PHPBB_ROOT_PATH . 'includes/' . $this->p_class;
+		$module_path = $this->include_path . $this->p_class;
 		$icat = request_var('icat', '');
 
 		if ($this->active_module === false)

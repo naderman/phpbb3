@@ -97,6 +97,12 @@ class messenger
 	*/
 	function im($address, $realname = '')
 	{
+		// IM-Addresses could be empty
+		if (!$address)
+		{
+			return;
+		}
+
 		$pos = isset($this->addresses['im']) ? sizeof($this->addresses['im']) : 0;
 		$this->addresses['im'][$pos]['uid'] = trim($address);
 		$this->addresses['im'][$pos]['name'] = trim($realname);
@@ -443,6 +449,11 @@ class messenger
 			return false;
 		}
 
+		if (empty($this->addresses['im']))
+		{
+			return false;
+		}
+
 		$use_queue = false;
 		if ($config['jab_package_size'] && $this->use_queue)
 		{
@@ -691,7 +702,7 @@ class queue
 			if ($fp = @fopen($this->cache_file, 'wb'))
 			{
 				@flock($fp, LOCK_EX);
-				fwrite($fp, "<?php\n\$this->queue_data = " . var_export($this->queue_data, true) . ";\n?>");
+				fwrite($fp, "<?php\n\$this->queue_data = unserialize(" . var_export(serialize($this->queue_data), true) . ");\n\n?>");
 				@flock($fp, LOCK_UN);
 				fclose($fp);
 
@@ -732,7 +743,7 @@ class queue
 		if ($fp = @fopen($this->cache_file, 'w'))
 		{
 			@flock($fp, LOCK_EX);
-			fwrite($fp, "<?php\n\$this->queue_data = " . var_export($this->data, true) . ";\n?>");
+			fwrite($fp, "<?php\n\$this->queue_data = unserialize(" . var_export(serialize($this->data), true) . ");\n\n?>");
 			@flock($fp, LOCK_UN);
 			fclose($fp);
 
@@ -1423,9 +1434,10 @@ function mail_encode($str)
 	{
 		$text = '';
 
-		while (sizeof($array) && intval((strlen($text . $array[0]) + 2) / 3) << 2 <= $split_length)
+		while (sizeof($array) && intval((strlen($text . current($array)) + 2) / 3) << 2 <= $split_length)
 		{
-			$text .= array_shift($array);
+			$text .= current($array);
+			unset($array[key($array)]);
 		}
 
 		$str .= $start . base64_encode($text) . $end . ' ';

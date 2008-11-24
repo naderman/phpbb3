@@ -31,7 +31,7 @@ class acp_attachments
 		$user->add_lang(array('posting', 'viewtopic', 'acp/attachments'));
 
 		$error = $notify = array();
-		$submit = (isset($_POST['submit'])) ? true : false;
+		$submit = request::is_set_post('submit');
 		$action = request_var('action', '');
 
 		$form_key = 'acp_attach';
@@ -128,7 +128,7 @@ class acp_attachments
 				);
 
 				$this->new_config = $config;
-				$cfg_array = (isset($_REQUEST['config'])) ? request_var('config', array('' => '')) : $this->new_config;
+				$cfg_array = (request::is_set('config')) ? request_var('config', array('' => '')) : $this->new_config;
 				$error = array();
 
 				// We validate the complete config if whished
@@ -297,7 +297,7 @@ class acp_attachments
 
 			case 'extensions':
 
-				if ($submit || isset($_POST['add_extension_check']))
+				if ($submit || request::is_set_post('add_extension_check'))
 				{
 					if ($submit)
 					{
@@ -361,7 +361,7 @@ class acp_attachments
 					// Add Extension?
 					$add_extension			= strtolower(request_var('add_extension', ''));
 					$add_extension_group	= request_var('add_group_select', 0);
-					$add					= (isset($_POST['add_extension_check'])) ? true : false;
+					$add					= request::is_set_post('add_extension_check');
 
 					if ($add_extension && $add)
 					{
@@ -402,7 +402,7 @@ class acp_attachments
 				$template->assign_vars(array(
 					'S_EXTENSIONS'			=> true,
 					'ADD_EXTENSION'			=> (isset($add_extension)) ? $add_extension : '',
-					'GROUP_SELECT_OPTIONS'	=> (isset($_POST['add_extension_check'])) ? $this->group_select('add_group_select', $add_extension_group, 'extension_group') : $this->group_select('add_group_select', false, 'extension_group'))
+					'GROUP_SELECT_OPTIONS'	=> (request::is_set_post('add_extension_check')) ? $this->group_select('add_group_select', $add_extension_group, 'extension_group') : $this->group_select('add_group_select', false, 'extension_group'))
 				);
 
 				$sql = 'SELECT *
@@ -512,10 +512,10 @@ class acp_attachments
 						$size_select	= request_var('size_select', 'b');
 						$forum_select	= request_var('forum_select', false);
 						$allowed_forums	= request_var('allowed_forums', array(0));
-						$allow_in_pm	= (isset($_POST['allow_in_pm'])) ? true : false;
+						$allow_in_pm	= request::is_set_post('allow_in_pm');
 						$max_filesize	= request_var('max_filesize', 0);
 						$max_filesize	= ($size_select == 'kb') ? round($max_filesize * 1024) : (($size_select == 'mb') ? round($max_filesize * 1048576) : $max_filesize);
-						$allow_group	= (isset($_POST['allow_group'])) ? true : false;
+						$allow_group	= request::is_set_post('allow_group');
 
 						if ($max_filesize == $config['max_filesize'])
 						{
@@ -593,7 +593,7 @@ class acp_attachments
 				);
 
 				$group_id = request_var('g', 0);
-				$action = (isset($_POST['add'])) ? 'add' : $action;
+				$action = request::is_set_post('add');
 
 				switch ($action)
 				{
@@ -768,6 +768,8 @@ class acp_attachments
 
 						$s_forum_id_options = '';
 
+						/** @todo use in-built function **/
+
 						$sql = 'SELECT forum_id, forum_name, parent_id, forum_type, left_id, right_id
 							FROM ' . FORUMS_TABLE . '
 							ORDER BY left_id ASC';
@@ -798,7 +800,7 @@ class acp_attachments
 							}
 							else if ($row['left_id'] > $right + 1)
 							{
-								$padding = $padding_store[$row['parent_id']];
+								$padding = empty($padding_store[$row['parent_id']]) ? '' : $padding_store[$row['parent_id']];
 							}
 
 							$right = $row['right_id'];
@@ -874,8 +876,8 @@ class acp_attachments
 
 				if ($submit)
 				{
-					$delete_files = (isset($_POST['delete'])) ? array_keys(request_var('delete', array('' => 0))) : array();
-					$add_files = (isset($_POST['add'])) ? array_keys(request_var('add', array('' => 0))) : array();
+					$delete_files = array_keys(request::variable('delete', array('' => 0), false, request::POST));
+					$add_files = array_keys(request::variable('add', array('' => 0), false, request::POST));
 					$post_ids = request_var('post_id', array('' => 0));
 
 					if (sizeof($delete_files))
@@ -1171,7 +1173,7 @@ class acp_attachments
 					$location .= '/';
 				}
 
-				if (@is_readable($location . 'mogrify' . $exe) && @filesize($location . 'mogrify' . $exe) > 3000)
+				if (@file_exists($location) && @is_readable($location . 'mogrify' . $exe) && @filesize($location . 'mogrify' . $exe) > 3000)
 				{
 					$imagick = str_replace('\\', '/', $location);
 					continue;
@@ -1229,14 +1231,14 @@ class acp_attachments
 	{
 		global $db, $user;
 
-		if (isset($_REQUEST['securesubmit']))
+		if (request::is_set('securesubmit'))
 		{
 			// Grab the list of entries
 			$ips = request_var('ips', '');
 			$ip_list = array_unique(explode("\n", $ips));
 			$ip_list_log = implode(', ', $ip_list);
 
-			$ip_exclude = (!empty($_POST['ipexclude'])) ? 1 : 0;
+			$ip_exclude = (int) request::variable('ipexclude', false, false, request::POST);
 
 			$iplist = array();
 			$hostlist = array();
@@ -1383,7 +1385,7 @@ class acp_attachments
 
 			trigger_error($user->lang['SECURE_DOWNLOAD_UPDATE_SUCCESS'] . adm_back_link($this->u_action));
 		}
-		else if (isset($_POST['unsecuresubmit']))
+		else if (request::is_set_post('unsecuresubmit'))
 		{
 			$unip_sql = request_var('unip', array(0));
 
