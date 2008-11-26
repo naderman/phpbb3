@@ -21,7 +21,7 @@ if (!defined('IN_PHPBB'))
  * @see template_compile
  *
  */
-class template_filter extends php_user_filter
+class phpbb_template_filter extends php_user_filter
 {
 	private $regex = '~<!-- ([A-Z][A-Z_0-9]+)(?: (.*?) ?)?-->|{((?:[a-z][a-z_0-9]+\.)*\\$?[A-Z][A-Z_0-9]+)}~';
 	private $blocks = array();
@@ -692,7 +692,7 @@ class template_filter extends php_user_filter
 	}
 }
 
-stream_filter_register('template', 'template_filter');
+stream_filter_register('phpbb_template', 'phpbb_template_filter');
 
 /**
 * Extension of template class - Functions needed for compiling templates only.
@@ -713,7 +713,7 @@ stream_filter_register('template', 'template_filter');
 *
 * @package phpBB3
 */
-class template_compile
+class phpbb_template_compile
 {
 
 	private $template;

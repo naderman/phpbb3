@@ -20,7 +20,7 @@ if (!defined('IN_PHPBB'))
 * Base Template class.
 * @package phpBB3
 */
-class template
+class phpbb_template
 {
 	/** variable that holds all the data we'll be substituting into
 	* the compiled templates. Takes form:
@@ -216,12 +216,7 @@ class template
 		// Recompile page if the original template is newer, otherwise load the compiled version
 		if ($recompile)
 		{
-			if (!class_exists('template_compile'))
-			{
-				include(PHPBB_ROOT_PATH . 'includes/functions_template.' . PHP_EXT);
-			}
-
-			$compile = new template_compile($this);
+			$compile = new phpbb_template_compile($this);
 
 			// If we don't have a file assigned to this handle, die.
 			if (!isset($this->files[$handle]))
@@ -246,12 +241,7 @@ class template
 	{
 //		global $user, $config;
 
-		if (!class_exists('template_compile'))
-		{
-			include(PHPBB_ROOT_PATH . 'includes/functions_template.' . PHP_EXT);
-		}
-
-		$compile = new template_compile($this);
+		$compile = new phpbb_template_compile($this);
 
 		// If we don't have a file assigned to this handle, die.
 		if (!isset($this->files[$handle]))
