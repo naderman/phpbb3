@@ -93,7 +93,7 @@ phpbb::$acm->register('data', false, 'xcache');
 // Grab global variables
 phpbb_cache::obtain_config();
 
-/*print_r(phpbb::$config);
+print_r(phpbb::$config);
 
 // Some obscure playing around... ;)
 
@@ -118,7 +118,7 @@ echo ";".phpbb::$instances['target_db']->sql_layer.";";
 echo ";".phpbb::call('target_db')->sql_layer.";";
 
 exit;
-*/
+
 // Register Template
 phpbb::register('template');
 /*
