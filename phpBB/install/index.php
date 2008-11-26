@@ -161,13 +161,17 @@ else
 	$phpbb_hook = false;
 }
 */
+
+$mode = request_var('mode', 'overview');
+$sub = request_var('sub', '');
+
 // Set some standard variables we want to force
 phpbb::$config = array(
 	'load_tplcompile'	=> '1'
 );
 
-$template->set_custom_template('../adm/style', 'admin');
-$template->assign_var('T_TEMPLATE_PATH', '../adm/style');
+phpbb::$template->set_custom_template('../adm/style', 'admin');
+phpbb::$template->assign_var('T_TEMPLATE_PATH', '../adm/style');
 
 $install = new module();
 
@@ -178,7 +182,7 @@ $install->load();
 $install->page_header();
 $install->generate_navigation();
 
-$template->set_filenames(array(
+phpbb::$template->set_filenames(array(
 	'body' => $install->get_tpl_name())
 );
 
@@ -314,9 +318,9 @@ class module
 		}
 
 		define('HEADER_INC', true);
-		global $template, $lang, $stage;
+		global $lang, $stage;
 
-		$template->assign_vars(array(
+		phpbb::$template->assign_vars(array(
 			'L_CHANGE'				=> $lang['CHANGE'],
 			'L_INSTALL_PANEL'		=> $lang['INSTALL_PANEL'],
 			'L_SELECT_LANG'			=> $lang['SELECT_LANG'],
@@ -346,9 +350,7 @@ class module
 	*/
 	function page_footer()
 	{
-		global $db, $template;
-
-		$template->display('body');
+		phpbb::$template->display('body');
 
 		// Close our DB connection.
 		if (!empty($db) && is_object($db))
@@ -428,7 +430,7 @@ class module
 	*/
 	function generate_navigation()
 	{
-		global $lang, $template, $language;
+		global $lang, $language;
 
 		if (is_array($this->module_ary))
 		{
@@ -442,7 +444,7 @@ class module
 
 				if ($this->mode == $cat)
 				{
-					$template->assign_block_vars('t_block1', array(
+					phpbb::$template->assign_block_vars('t_block1', array(
 						'L_TITLE'		=> $l_cat,
 						'S_SELECTED'	=> true,
 						'U_TITLE'		=> $url,
@@ -457,7 +459,7 @@ class module
 							$option = strtolower($option);
 							$url = $this->module_url . '?mode=' . $this->mode . "&amp;sub=$option&amp;language=$language";
 
-							$template->assign_block_vars('l_block1', array(
+							phpbb::$template->assign_block_vars('l_block1', array(
 								'L_TITLE'		=> $l_option,
 								'S_SELECTED'	=> ($this->sub == $option),
 								'U_TITLE'		=> $url,
@@ -475,7 +477,7 @@ class module
 							$option = strtolower($option);
 							$matched = ($this->sub == $option) ? true : $matched;
 
-							$template->assign_block_vars('l_block2', array(
+							phpbb::$template->assign_block_vars('l_block2', array(
 								'L_TITLE'		=> $l_option,
 								'S_SELECTED'	=> ($this->sub == $option),
 								'S_COMPLETE'	=> !$matched,
@@ -485,7 +487,7 @@ class module
 				}
 				else
 				{
-					$template->assign_block_vars('t_block1', array(
+					phpbb::$template->assign_block_vars('t_block1', array(
 						'L_TITLE'		=> $l_cat,
 						'S_SELECTED'	=> false,
 						'U_TITLE'		=> $url,
@@ -501,16 +503,16 @@ class module
 	*/
 	function error($error, $line, $file, $skip = false)
 	{
-		global $lang, $db, $template;
+		global $lang, $db;
 
 		if ($skip)
 		{
-			$template->assign_block_vars('checks', array(
+			phpbb::$template->assign_block_vars('checks', array(
 				'S_LEGEND'	=> true,
 				'LEGEND'	=> $lang['INST_ERR'],
 			));
 
-			$template->assign_block_vars('checks', array(
+			phpbb::$template->assign_block_vars('checks', array(
 				'TITLE'		=> basename($file) . ' [ ' . $line . ' ]',
 				'RESULT'	=> '<b style="color:red">' . $error . '</b>',
 			));
@@ -564,7 +566,7 @@ class module
 	*/
 	function db_error($error, $sql, $line, $file, $skip = false)
 	{
-		global $lang, $db, $template;
+		global $lang, $db;
 
 		if ($skip)
 		{

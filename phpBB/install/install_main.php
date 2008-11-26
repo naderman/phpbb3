@@ -43,7 +43,7 @@ class install_main extends module
 
 	function main($mode, $sub)
 	{
-		global $lang, $template, $language;
+		global $lang, $language;
 
 		switch ($sub)
 		{
@@ -66,7 +66,7 @@ class install_main extends module
 		$this->tpl_name = 'install_main';
 		$this->page_title = $title;
 
-		$template->assign_vars(array(
+		phpbb::$template->assign_vars(array(
 			'TITLE'		=> $title,
 			'BODY'		=> $body,
 

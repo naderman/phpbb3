@@ -1,10 +1,10 @@
 <?php
-/** 
+/**
 *
 * @package acm
 * @version $Id$
-* @copyright (c) 2005 phpBB Group 
-* @license http://opensource.org/licenses/gpl-license.php GNU Public License 
+* @copyright (c) 2005 phpBB Group
+* @license http://opensource.org/licenses/gpl-license.php GNU Public License
 *
 */
 
@@ -20,31 +20,53 @@ if (!defined('IN_PHPBB'))
 * ACM XCache Based Caching
 * @package acm
 */
-class acm
+class phpbb_acm_xcache extends phpbb_acm_abstract
 {
-	private $vars = array();
-	private $is_modified = false;
-
-	public $sql_rowset = array();
-	public $cache_dir = '';
+	public $supported = array('data' => true, 'sql' => true);
 
 	/**
 	* Set cache path
 	*/
-	function __construct()
+	function __construct($cache_prefix)
 	{
-		$this->cache_dir = PHPBB_ROOT_PATH . 'cache/';
+		$this->cache_prefix = $cache_prefix;
+	}
+
+	/**
+	* Get saved cache object
+	*/
+	protected function get_local($var_name)
+	{
+		if (!$this->exists($var_name))
+		{
+			return false;
+		}
+
+		return xcache_get($this->cache_prefix . '_' . $var_name);
+	}
+
+	/**
+	* Put data into cache
+	*/
+	protected function put_local($var_name, $data, $ttl = 31536000)
+	{
+		xcache_set($this->cache_prefix . '_' . $var_name, $data, $ttl);
+		return $data;
 	}
 
 	/**
 	* Load global cache
 	*/
-	private function load()
+	public function load()
 	{
 		// grab the global cache
-		if (xcache_isset('global'))
+		if (xcache_isset($this->cache_prefix . '_global'))
 		{
-			$this->vars = xcache_get('global');
+			$data = xcache_get($this->cache_prefix . '_global');
+
+			$this->vars = unserialize($data['vars']);
+			$this->var_expires = unserialize($data['var_expires']);
+
 			return true;
 		}
 
@@ -52,78 +74,120 @@ class acm
 	}
 
 	/**
-	* Unload cache object
+	* Save global Cache
 	*/
-	public function unload()
-	{
-		$this->save();
-		unset($this->vars);
-		unset($this->sql_rowset);
-
-		$this->vars = array();
-		$this->sql_rowset = array();
-	}
-
-	/**
-	* Save modified objects
-	*/
-	private function save()
+	public function save()
 	{
 		if (!$this->is_modified)
 		{
 			return;
 		}
 
-		xcache_set('global', $this->vars, 31536000);
+		$data = array(
+			'vars'			=> serialize($this->vars),
+			'var_expires'	=> serialize($this->var_expires),
+		);
+
+		xcache_set($this->cache_prefix . '_global', $data);
 
 		$this->is_modified = false;
 	}
 
 	/**
-	* Tidy cache
+	* Check if a given cache entry exist
 	*/
-	public function tidy()
+	public function exists($var_name)
 	{
-		// cache has auto GC, no need to have any code here :)
-
-		set_config('cache_last_gc', time(), true);
+		if ($var_name[0] !== '#')
+		{
+			return xcache_isset($this->cache_prefix . '_' . $var_name);
+		}
 	}
 
-	/**
-	* Get saved cache object
-	*/
-	public function get($var_name)
+	protected function destroy_local($var_name, $additional_data = false)
 	{
-		if ($var_name[0] === '_')
+		// We support removing sql cache sorted by table ;)
+		if ($this->cache_prefix == 'sql' && $var_name === 'tables' && !empty($additional_data))
 		{
-			return (xcache_isset($var_name)) ? xcache_get($var_name) : false;
-		}
-		else
-		{
-			if (!sizeof($this->vars))
+			if (!is_array($additional_data))
 			{
-				$this->load();
+				$table = array($additional_data);
 			}
-			return (isset($this->vars[$var_name])) ? $this->vars[$var_name] : false;
+			else
+			{
+				$table = $additional_data;
+			}
+
+			$num_entries = xcache_count(XC_TYPE_VAR);
+
+			if (!$num_entries)
+			{
+				return;
+			}
+
+			for ($i = 0; $i < $num_entries; $i++)
+			{
+				$data = xcache_list(XC_TYPE_VAR, $i);
+
+				if (empty($data['cache_list']))
+				{
+					continue;
+				}
+
+				foreach ($data['cache_list'] as $list)
+				{
+					if (strpos($list['name'], $this->cache_prefix . '_') === 0)
+					{
+						continue;
+					}
+
+					if (xcache_isset($list['name']))
+					{
+						$data = xcache_get($list['name']);
+
+						if (empty($data['query']))
+						{
+							continue;
+						}
+
+						// Get the query
+						$data = $data['query'];
+
+						$found = false;
+						foreach ($table as $check_table)
+						{
+							// Better catch partial table names than no table names. ;)
+							if (strpos($data, $check_table) !== false)
+							{
+								$found = true;
+								break;
+							}
+						}
+
+						if ($found)
+						{
+							xcache_unset($list['name']);
+						}
+					}
+				}
+			}
+
+			return;
 		}
+
+		if (!$this->exists($var_name))
+		{
+			return false;
+		}
+
+		xcache_unset($this->cache_prefix . '_' . $var_name);
 	}
+}
+
+class acm_xcache {
+
 
 	/**
-	* Put data into cache
-	*/
-	public function put($var_name, $var, $ttl = 31536000)
-	{
-		if ($var_name[0] === '_')
-		{
-			xcache_set($var_name, $var, $ttl);
-		}
-		else
-		{
-			$this->vars[$var_name] = $var;
-			$this->is_modified = true;
-		}
-	}
-
 	/**
 	* Purge cache data
 	*/
