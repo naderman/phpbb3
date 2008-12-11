@@ -20,45 +20,10 @@ if (!defined('IN_PHPBB'))
 * ACP Permission/Auth class
 * @package phpBB3
 */
-class auth_admin extends auth
+class phpbb_acl_admin extends acl
 {
-	/**
-	* Init auth settings
-	*/
-	function __construct()
-	{
-		global $db, $cache;
+	function __construct() { parent::__construct(); }
 
-		if (($this->acl_options = $cache->get('_acl_options')) === false)
-		{
-			$sql = 'SELECT auth_option_id, auth_option, is_global, is_local
-				FROM ' . ACL_OPTIONS_TABLE . '
-				ORDER BY auth_option_id';
-			$result = $db->sql_query($sql);
-
-			$global = $local = 0;
-			$this->acl_options = array();
-			while ($row = $db->sql_fetchrow($result))
-			{
-				if ($row['is_global'])
-				{
-					$this->acl_options['global'][$row['auth_option']] = $global++;
-				}
-
-				if ($row['is_local'])
-				{
-					$this->acl_options['local'][$row['auth_option']] = $local++;
-				}
-
-				$this->acl_options['id'][$row['auth_option']] = (int) $row['auth_option_id'];
-				$this->acl_options['option'][(int) $row['auth_option_id']] = $row['auth_option'];
-			}
-			$db->sql_freeresult($result);
-
-			$cache->put('_acl_options', $this->acl_options);
-		}
-	}
-	
 	/**
 	* Get permission mask
 	* This function only supports getting permissions of one type (for example a_)
@@ -140,7 +105,7 @@ class auth_admin extends auth
 					$auth2 = &$auth;
 				}
 
-				
+
 				$hold_ary[$userdata['user_id']] = array();
 				foreach ($forum_ids as $f_id)
 				{
@@ -345,7 +310,7 @@ class auth_admin extends auth
 
 		// Build js roles array (role data assignments)
 		$s_role_js_array = '';
-		
+
 		if (sizeof($roles))
 		{
 			$s_role_js_array = array();
@@ -797,7 +762,7 @@ class auth_admin extends auth
 		reset($auth);
 		$flag = key($auth);
 		$flag = substr($flag, 0, strpos($flag, '_') + 1);
-		
+
 		// This ID (the any-flag) is set if one or more permissions are true...
 		$any_option_id = (int) $this->acl_options['id'][$flag];
 
@@ -911,7 +876,7 @@ class auth_admin extends auth
 		reset($auth);
 		$flag = key($auth);
 		$flag = substr($flag, 0, strpos($flag, '_') + 1);
-		
+
 		// Remove any-flag from auth ary
 		if (isset($auth[$flag]))
 		{
@@ -1062,7 +1027,7 @@ class auth_admin extends auth
 		{
 			$where_sql[] = $db->sql_in_set('auth_option_id', array_map('intval', $option_id_ary));
 		}
-		
+
 		$sql = "DELETE FROM $table
 			WHERE " . implode(' AND ', $where_sql);
 		$db->sql_query($sql);
@@ -1085,7 +1050,7 @@ class auth_admin extends auth
 				'S_YES'		=> ($cat_array['S_YES'] && !$cat_array['S_NEVER'] && !$cat_array['S_NO']) ? true : false,
 				'S_NEVER'	=> ($cat_array['S_NEVER'] && !$cat_array['S_YES'] && !$cat_array['S_NO']) ? true : false,
 				'S_NO'		=> ($cat_array['S_NO'] && !$cat_array['S_NEVER'] && !$cat_array['S_YES']) ? true : false,
-							
+
 				'CAT_NAME'	=> $user->lang['permission_cat'][$cat])
 			);
 
@@ -1174,9 +1139,9 @@ class auth_admin extends auth
 						'lang'	=> '{ acl_' . $permission . ' }'
 					);
 				}
-			
+
 				$cat = $user->lang['acl_' . $permission]['cat'];
-			
+
 				// Build our categories array
 				if (!isset($categories[$cat]))
 				{
