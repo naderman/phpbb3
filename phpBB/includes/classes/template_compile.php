@@ -19,19 +19,32 @@ if (!defined('IN_PHPBB'))
 /**
  * The template filter that does the actual compilation
  * @see template_compile
+ * @package phpBB3
  *
  */
 class phpbb_template_filter extends php_user_filter
 {
+	/**
+	* @var string Replaceable tokens regex
+	*/
 	private $regex = '~<!-- ([A-Z][A-Z_0-9]+)(?: (.*?) ?)?-->|{((?:[a-z][a-z_0-9]+\.)*\\$?[A-Z][A-Z_0-9]+)}~';
-	private $blocks = array();
 
+	/**
+	* @var array
+	*/
 	private $block_names = array();
+
+	/**
+	* @var array
+	*/
 	private $block_else_level = array();
 
+	/**
+	* @var string
+	*/
 	private $chunk;
 
-	function filter($in, $out, &$consumed, $closing)
+	public function filter($in, $out, &$consumed, $closing)
 	{
 		$written = false;
 
@@ -203,6 +216,12 @@ class phpbb_template_filter extends php_user_filter
 		$no_nesting = false;
 
 		// Is the designer wanting to call another loop in a loop?
+		// <!-- BEGIN loop -->
+		// <!-- BEGIN !loop2 -->
+		// <!-- END !loop2 -->
+		// <!-- END loop -->
+		// 'loop2' is actually on the same nesting level as 'loop' you assign
+		// variables to it with template->assign_block_vars('loop2', array(...))
 		if (strpos($tag_args, '!') === 0)
 		{
 			// Count the number if ! occurrences (not allowed in vars)
@@ -439,6 +458,10 @@ class phpbb_template_filter extends php_user_filter
 									$token = "(\$_${namespace}_i == \$_${namespace}_count - 1)";
 								break;
 
+								case 'S_BLOCK_NAME':
+									$token = "'$namespace'";
+								break;
+
 								default:
 									$token = $this->generate_block_data_ref(substr($varrefs[1], 0, -1), true, $varrefs[2]) . '[\'' . $varrefs[3] . '\']';
 								break;
@@ -605,13 +628,20 @@ class phpbb_template_filter extends php_user_filter
 	* block namespace. This is a string of the form:
 	* ' . $_tpldata['parent'][$_parent_i]['$child1'][$_child1_i]['$child2'][$_child2_i]...['varname'] . '
 	* It's ready to be inserted into an "echo" line in one of the templates.
-	* NOTE: expects a trailing "." on the namespace.
+	*
 	* @access private
+	* @param string $namespace Namespace to access (expects a trailing "." on the namespace)
+	* @param string $varname Variable name to use
+	* @param bool $echo If true return an echo statement, otherwise a reference to the internal variable
+	* @param bool $defop If true this is a variable created with the DEFINE construct, otherwise template variable
+	* @return string Code to access variable or echo it if $echo is true
 	*/
-	function generate_block_varref($namespace, $varname, $echo = true, $defop = false)
+	private function generate_block_varref($namespace, $varname, $echo = true, $defop = false)
 	{
 		// Strip the trailing period.
 		$namespace = substr($namespace, 0, -1);
+
+		$expr = true;
 
 		// S_ROW_COUNT is deceptive, it returns the current row number now the number of rows
 		// hence S_ROW_COUNT is deprecated in favour of S_ROW_NUM
@@ -634,6 +664,10 @@ class phpbb_template_filter extends php_user_filter
 				$varref = "(\$_${namespace}_i == \$_${namespace}_count - 1)";
 			break;
 
+			case 'S_BLOCK_NAME':
+				$varref = "'$namespace'";
+			break;
+
 			default:
 				// Get a reference to the data block for this namespace.
 				$varref = $this->generate_block_data_ref($namespace, true, $defop);
@@ -641,9 +675,12 @@ class phpbb_template_filter extends php_user_filter
 
 				// Append the variable reference.
 				$varref .= "['$varname']";
+
+				$expr = false;
 			break;
 		}
-		$varref = ($echo) ? "<?php echo $varref; ?>" : ((isset($varref)) ? $varref : '');
+		// @todo Test the !$expr more
+		$varref = ($echo) ? "<?php echo $varref; ?>" : (($expr || isset($varref)) ? $varref : '');
 
 		return $varref;
 	}
@@ -653,11 +690,13 @@ class phpbb_template_filter extends php_user_filter
 	* (possibly nested) block namespace. This is a string of the form:
 	* $_tpldata['parent'][$_parent_i]['$child1'][$_child1_i]['$child2'][$_child2_i]...['$childN']
 	*
-	* If $include_last_iterator is true, then [$_childN_i] will be appended to the form shown above.
-	* NOTE: does not expect a trailing "." on the blockname.
 	* @access private
+	* @param string $blockname Block to access (does not expect a trailing "." on the blockname)
+	* @param bool $include_last_iterator If $include_last_iterator is true, then [$_childN_i] will be appended to the form shown above.
+	* @param bool $defop If true this is a variable created with the DEFINE construct, otherwise template variable
+	* @return string Code to access variable
 	*/
-	function generate_block_data_ref($blockname, $include_last_iterator, $defop = false)
+	private function generate_block_data_ref($blockname, $include_last_iterator, $defop = false)
 	{
 		// Get an array of the blocks involved.
 		$blocks = explode('.', $blockname);
@@ -712,16 +751,20 @@ stream_filter_register('phpbb_template', 'phpbb_template_filter');
 * DEFINE directive inspired by a request by Cyberalien
 *
 * @package phpBB3
+* @uses template_filter As a PHP stream filter to perform compilation of templates
 */
 class phpbb_template_compile
 {
-
+	/**
+	* @var template Reference to the {@link template template} object performing compilation
+	*/
 	private $template;
 
 	/**
 	* Constructor
+	* @param template $template {@link template Template} object performing compilation
 	*/
-	function __construct(template $template)
+	function __construct(phpbb_template $template)
 	{
 		$this->template = $template;
 	}
@@ -729,8 +772,10 @@ class phpbb_template_compile
 	/**
 	* Load template source from file
 	* @access public
+	* @param string $handle Template handle we wish to load
+	* @return bool Return true on success otherwise false
 	*/
-	public function _tpl_load_file($handle/*, $store_in_db = false*/)
+	public function _tpl_load_file($handle)
 	{
 		// Try and open template for read
 		if (!file_exists($this->template->files[$handle]))
@@ -740,9 +785,14 @@ class phpbb_template_compile
 
 		// Actually compile the code now.
 		return $this->compile_write($handle, $this->template->files[$handle]);
-
 	}
 
+	/**
+	* Load template source from file
+	* @access public
+	* @param string $handle Template handle we wish to compile
+	* @return string|bool Return compiled code on successful compilation otherwise false
+	*/
 	public function _tpl_gen_src($handle)
 	{
 		// Try and open template for read
@@ -752,12 +802,15 @@ class phpbb_template_compile
 		}
 
 		// Actually compile the code now.
-		return $this->compile_gen(/*$handle, */$this->template->files[$handle]);
+		return $this->compile_gen($this->template->files[$handle]);
 	}
 
 	/**
 	* Write compiled file to cache directory
 	* @access private
+	* @param string $handle Template handle to compile
+	* @param string $source_file Source template file
+	* @return bool Return true on success otherwise false
 	*/
 	private function compile_write($handle, $source_file)
 	{
@@ -773,7 +826,7 @@ class phpbb_template_compile
 
 		@flock($destination_handle, LOCK_EX);
 
-		stream_filter_append($source_handle, 'template');
+		stream_filter_append($source_handle, 'phpbb_template');
 		stream_copy_to_stream($source_handle, $destination_handle);
 
 		@fclose($source_handle);
@@ -782,14 +835,18 @@ class phpbb_template_compile
 
 		phpbb_chmod($filename, CHMOD_WRITE);
 
+		clearstatcache();
+
 		return true;
 	}
 
 	/**
 	* Generate source for eval()
 	* @access private
+	* @param string $source_file Source template file
+	* @return string|bool Return compiled code on successful compilation otherwise false
 	*/
-	private function compile_gen(/*$handle, */$source_file)
+	private function compile_gen($source_file)
 	{
 		$source_handle = @fopen($source_file, 'rb');
 		$destination_handle = @fopen('php://temp' ,'r+b');
@@ -799,7 +856,7 @@ class phpbb_template_compile
 			return false;
 		}
 
-		stream_filter_append($source_handle, 'template');
+		stream_filter_append($source_handle, 'phpbb_template');
 		stream_copy_to_stream($source_handle, $destination_handle);
 
 		@fclose($source_handle);

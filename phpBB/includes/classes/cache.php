@@ -280,10 +280,11 @@ class phpbb_cache
 	{
 		if (($bots = phpbb::$acm->get('bots')) === false)
 		{
+			// @todo We order by last visit date. This way we are able to safe some cycles by checking the most active ones first.
 			$sql = 'SELECT user_id, bot_agent, bot_ip
 				FROM ' . BOTS_TABLE . '
 				WHERE bot_active = 1
-			ORDER BY ' . phpbb::$db->sql_function('length_varchar', 'bot_agent') . 'DESC';
+				ORDER BY ' . phpbb::$db->sql_function('length_varchar', 'bot_agent') . 'DESC';
 			$result = phpbb::$db->sql_query($sql);
 
 			$bots = array();

@@ -104,7 +104,7 @@ function login_apache(&$username, &$password)
 					'user_row'		=> $row,
 				);
 			}
-	
+
 			// Successful login...
 			return array(
 				'status'		=> LOGIN_SUCCESS,
@@ -148,8 +148,8 @@ function autologin_apache()
 
 	if (!empty($php_auth_user) && !empty($php_auth_pw))
 	{
-		set_var($php_auth_user, $php_auth_user, 'string', true);
-		set_var($php_auth_pw, $php_auth_pw, 'string', true);
+		request::set_var($php_auth_user, $php_auth_user, 'string', true);
+		request::set_var($php_auth_pw, $php_auth_pw, 'string', true);
 
 		$sql = 'SELECT *
 			FROM ' . USERS_TABLE . "
@@ -231,7 +231,7 @@ function validate_session_apache(&$user)
 	}
 
 	$php_auth_user = '';
-	set_var($php_auth_user, $_SERVER['PHP_AUTH_USER'], 'string', true);
+	request::set_var($php_auth_user, $_SERVER['PHP_AUTH_USER'], 'string', true);
 
 	return ($php_auth_user === $user['username']) ? true : false;
 }

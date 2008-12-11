@@ -33,6 +33,7 @@ if (!$id)
 	exit;
 }
 
+define('PHPBB_FRAMEWORK_SAFE', true);
 include(PHPBB_ROOT_PATH . 'common.' . PHP_EXT);
 
 $user = false;
@@ -41,17 +42,17 @@ if ($sid)
 {
 	$sql = 'SELECT u.user_id, u.user_lang
 		FROM ' . SESSIONS_TABLE . ' s, ' . USERS_TABLE . " u
-		WHERE s.session_id = '" . $db->sql_escape($sid) . "'
+		WHERE s.session_id = '" . phpbb::$db->sql_escape($sid) . "'
 			AND s.session_user_id = u.user_id";
-	$result = $db->sql_query($sql);
-	$user = $db->sql_fetchrow($result);
-	$db->sql_freeresult($result);
+	$result = phpbb::$db->sql_query($sql);
+	$user = phpbb::$db->sql_fetchrow($result);
+	phpbb::$db->sql_freeresult($result);
 }
 
-$recompile = $config['load_tplcompile'];
+$recompile = phpbb::$config['load_tplcompile'];
 if (!$user)
 {
-	$id			= $config['default_style'];
+	$id			= phpbb::$config['default_style'];
 	$recompile	= false;
 	$user		= array('user_id' => ANONYMOUS);
 }
@@ -62,9 +63,9 @@ $sql = 'SELECT s.style_id, c.theme_id, c.theme_data, c.theme_path, c.theme_name,
 		AND t.template_id = s.template_id
 		AND c.theme_id = s.theme_id
 		AND i.imageset_id = s.imageset_id';
-$result = $db->sql_query($sql, 300);
-$theme = $db->sql_fetchrow($result);
-$db->sql_freeresult($result);
+$result = phpbb::$db->sql_query($sql, 300);
+$theme = phpbb::$db->sql_fetchrow($result);
+phpbb::$db->sql_freeresult($result);
 
 if (!$theme)
 {
@@ -74,27 +75,27 @@ if (!$theme)
 
 if ($user['user_id'] == ANONYMOUS)
 {
-	$user['user_lang'] = $config['default_lang'];
+	$user['user_lang'] = phpbb::$config['default_lang'];
 }
 
-$user_image_lang = (file_exists(PHPBB_ROOT_PATH . 'styles/' . $theme['imageset_path'] . '/imageset/' . $user['user_lang'])) ? $user['user_lang'] : $config['default_lang'];
+$user_image_lang = (file_exists(PHPBB_ROOT_PATH . 'styles/' . $theme['imageset_path'] . '/imageset/' . $user['user_lang'])) ? $user['user_lang'] : phpbb::$config['default_lang'];
 
 $sql = 'SELECT *
 	FROM ' . STYLES_IMAGESET_DATA_TABLE . '
 	WHERE imageset_id = ' . $theme['imageset_id'] . "
 	AND image_filename <> ''
-	AND image_lang IN ('" . $db->sql_escape($user_image_lang) . "', '')";
-$result = $db->sql_query($sql, 3600);
+	AND image_lang IN ('" . phpbb::$db->sql_escape($user_image_lang) . "', '')";
+$result = phpbb::$db->sql_query($sql, 3600);
 
 $img_array = array();
-while ($row = $db->sql_fetchrow($result))
+while ($row = phpbb::$db->sql_fetchrow($result))
 {
 	$img_array[$row['image_name']] = $row;
 }
-$db->sql_freeresult($result);
+phpbb::$db->sql_freeresult($result);
 
 // gzip_compression
-if ($config['gzip_compress'])
+if (phpbb::$config['gzip_compress'])
 {
 	// IE6 is not able to compress the style (do not ask us why!)
 	$browser = (!empty($_SERVER['HTTP_USER_AGENT'])) ? strtolower(htmlspecialchars((string) $_SERVER['HTTP_USER_AGENT'])) : '';

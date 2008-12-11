@@ -23,9 +23,15 @@ class phpbb
 	/**#@+
 	* Our own static variables
 	*/
+	public static $template = NULL;
+	public static $user = NULL;
 	public static $db = NULL;
 	public static $acm = NULL;
-	public static $template = NULL;
+	public static $acl = NULL;
+
+	public static $url = NULL;
+	public static $security = NULL;
+
 	public static $config = array();
 	/**#@-*/
 
@@ -191,6 +197,16 @@ function __phpbb_autoload($class_name)
 		'includes/classes/' . $class_name,
 		'includes/' . $class_name,
 	);
+
+	if (strpos($class_name, '_') !== false)
+	{
+		$class_name = str_replace('_', '/', $class_name);
+
+		$filenames = array_merge($filenames, array(
+			'includes/' . $class_name,
+			'includes/classes/' . $class_name,
+		));
+	}
 
 	foreach ($filenames as $filename)
 	{

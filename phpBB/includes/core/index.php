@@ -138,7 +138,7 @@ if (!function_exists('glob'))
 }
 else
 {
-	// Now search for hooks...
+	// Now search for required core files...
 	$dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/');
 
 	if ($dh)
@@ -154,9 +154,11 @@ else
 	}
 }
 
-/* Some more required classes
-require_once(PHPBB_ROOT_PATH . 'includes/session.' . PHP_EXT);
-require_once(PHPBB_ROOT_PATH . 'includes/auth.' . PHP_EXT);
+// Register core classes
+phpbb::register('url');
+phpbb::register('security');
+
+// Some more required classes
 require_once(PHPBB_ROOT_PATH . 'includes/utf/utf_tools.' . PHP_EXT);
-*/
+
 ?>

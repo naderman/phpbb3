@@ -905,7 +905,7 @@ class install_update extends module
 
 				// Now update the installation or download the archive...
 				$download_filename = 'update_' . $this->update_info['version']['from'] . '_to_' . $this->update_info['version']['to'];
-				$archive_filename = $download_filename . '_' . time() . '_' . unique_id();
+				$archive_filename = $download_filename . '_' . time() . '_' . phpbb::$security->unique_id();
 
 				// Now init the connection
 				if ($update_mode == 'download')

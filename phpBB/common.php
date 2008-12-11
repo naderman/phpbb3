@@ -86,9 +86,13 @@ if (!empty($dbpasswd))
 // Register Cache Manager (SPL autoload test) - we define no classes
 phpbb::register('acm');
 
+// Grab global variables
+phpbb_cache::obtain_config();
+
+/*
 // For example, data handling with xcache and sql handling within the cache-directory
 phpbb::$acm->register('sql');
-phpbb::$acm->register('data', false, 'xcache');
+//phpbb::$acm->register('data', false, 'xcache');
 
 // Grab global variables
 phpbb_cache::obtain_config();
@@ -118,21 +122,34 @@ echo ";".phpbb::$instances['target_db']->sql_layer.";";
 echo ";".phpbb::call('target_db')->sql_layer.";";
 
 exit;
+*/
 
 // Register Template
 phpbb::register('template');
-/*
+
 // Register permission class
 phpbb::register('acl');
 
 // Register user object
 phpbb::register('user');
 
+/* Add own hook handler, if present. :o
+phpbb::register('hooks');
+
+foreach (phpbb_cache::obtain_hooks() as $hook)
+{
+	@include(PHPBB_ROOT_PATH . 'includes/hooks/' . $hook . '.' . PHP_EXT);
+}*/
+
 // Instantiate bare-bone user object
-// Start session management
-phpbb::$user->init();
+// Start session management, inits ACL class too
+// User->init is a collection of phpbb::$user->session_begin() and phpbb::$auth->acl()
+if (PHPBB_FRAMEWORK_FULL)
+{
+	phpbb::$user->init();
+}
 
 // Within the user-facing files we call:
 //phpbb::$user->start();
-*/
+
 ?>

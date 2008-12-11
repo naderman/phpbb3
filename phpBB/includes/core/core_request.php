@@ -301,6 +301,41 @@ class request
 	}
 
 	/**
+	* set_var
+	*
+	* Set variable, used by {@link request_var the request_var function}
+	*/
+	public static function set_var(&$result, $var, $type, $multibyte = false)
+	{
+		settype($var, $type);
+		$result = $var;
+
+		if ($type == 'string')
+		{
+			$result = trim(utf8_htmlspecialchars(str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $result)));
+
+			if (!empty($result))
+			{
+				// Make sure multibyte characters are wellformed
+				if ($multibyte)
+				{
+					if (!preg_match('/^./u', $result))
+					{
+						$result = '';
+					}
+				}
+				else
+				{
+					// no multibyte, allow only ASCII (0-127)
+					$result = preg_replace('/[\x80-\xFF]/', '?', $result);
+				}
+			}
+
+			$result = (STRIP) ? stripslashes($result) : $result;
+		}
+	}
+
+	/**
 	* Recursively sets a variable to a given type using {@link set_var set_var}
 	* This function is only used from within {@link request::variable request::variable}.
 	*
@@ -328,7 +363,7 @@ class request
 		if (!is_array($default))
 		{
 			$type = gettype($default);
-			set_var($var, $var, $type, $multibyte);
+			self::set_var($var, $var, $type, $multibyte);
 		}
 		else
 		{
@@ -349,10 +384,10 @@ class request
 
 			foreach ($_var as $k => $v)
 			{
-				set_var($k, $k, $key_type, $multibyte);
+				self::set_var($k, $k, $key_type, $multibyte);
 
 				self::recursive_set_var($v, $default_value, $multibyte);
-				set_var($var[$k], $v, $value_type, $multibyte);
+				self::set_var($var[$k], $v, $value_type, $multibyte);
 			}
 		}
 	}

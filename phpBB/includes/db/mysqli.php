@@ -111,7 +111,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	* SQL Transaction
 	* @access private
 	*/
-	public function _sql_transaction($status = 'begin')
+	protected function _sql_transaction($status = 'begin')
 	{
 		switch ($status)
 		{
@@ -196,7 +196,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	/**
 	* Build LIMIT query
 	*/
-	private function _sql_query_limit($query, $total, $offset = 0, $cache_ttl = 0)
+	protected function _sql_query_limit($query, $total, $offset = 0, $cache_ttl = 0)
 	{
 		$this->query_result = false;
 
@@ -332,7 +332,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	* Build LIKE expression
 	* @access private
 	*/
-	private function _sql_like_expression($expression)
+	protected function _sql_like_expression($expression)
 	{
 		return $expression;
 	}
@@ -341,7 +341,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	* Build db-specific query data
 	* @access private
 	*/
-	private function _sql_custom_build($stage, $data)
+	protected function _sql_custom_build($stage, $data)
 	{
 		switch ($stage)
 		{
@@ -357,7 +357,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	* return sql error array
 	* @access private
 	*/
-	private function _sql_error()
+	protected function _sql_error()
 	{
 		if (!$this->db_connect_id)
 		{
@@ -377,7 +377,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	* Close sql connection
 	* @access private
 	*/
-	private function _sql_close()
+	protected function _sql_close()
 	{
 		return @mysqli_close($this->db_connect_id);
 	}
@@ -386,7 +386,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 	* Build db-specific report
 	* @access private
 	*/
-	private function _sql_report($mode, $query = '')
+	protected function _sql_report($mode, $query = '')
 	{
 		static $test_prof;
 

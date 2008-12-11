@@ -248,23 +248,12 @@ class phpbb_acm_file extends phpbb_acm_abstract
 		}
 		closedir($dir);
 	}
-}
-
-/**
-* ACM File Based Caching
-* @package acm
-*/
-class acm
-{
-
-	public $sql_rowset = array();
 
 	/**
-	* Purge cache data
+	* Purge cache
 	*/
-	public function purge()
+	protected function _purge()
 	{
-		// Purge all phpbb cache files
 		$dir = @opendir($this->cache_dir);
 
 		if (!$dir)
@@ -274,7 +263,7 @@ class acm
 
 		while (($entry = readdir($dir)) !== false)
 		{
-			if (strpos($entry, 'sql_') !== 0 && strpos($entry, 'data_') !== 0 && strpos($entry, 'ctpl_') !== 0 && strpos($entry, 'tpl_') !== 0)
+			if (strpos($entry, $this->cache_prefix . '_') !== 0 || strpos($entry, $this->cache_prefix . '_global') === 0)
 			{
 				continue;
 			}
@@ -282,19 +271,7 @@ class acm
 			$this->remove_file($this->cache_dir . $entry);
 		}
 		closedir($dir);
-
-		unset($this->vars);
-		unset($this->var_expires);
-		unset($this->sql_rowset);
-
-		$this->vars = array();
-		$this->var_expires = array();
-		$this->sql_rowset = array();
-
-		$this->is_modified = false;
 	}
-
-
 }
 
 ?>
