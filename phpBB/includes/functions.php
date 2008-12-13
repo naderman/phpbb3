@@ -1678,8 +1678,6 @@ function parse_cfg_file($filename, $lines = false)
 */
 function add_log()
 {
-	global $db, $user;
-
 	$args = func_get_args();
 
 	$mode			= array_shift($args);
@@ -1690,8 +1688,8 @@ function add_log()
 	$data			= (!sizeof($args)) ? '' : serialize($args);
 
 	$sql_ary = array(
-		'user_id'		=> (empty($user->data)) ? ANONYMOUS : $user->data['user_id'],
-		'log_ip'		=> $user->ip,
+		'user_id'		=> (empty(phpbb::$user->data)) ? ANONYMOUS : phpbb::$user->data['user_id'],
+		'log_ip'		=> phpbb::$user->server['ip'],
 		'log_time'		=> time(),
 		'log_operation'	=> $action,
 		'log_data'		=> $data,
@@ -1726,9 +1724,9 @@ function add_log()
 			return false;
 	}
 
-	$db->sql_query('INSERT INTO ' . LOG_TABLE . ' ' . $db->sql_build_array('INSERT', $sql_ary));
+	phpbb::$db->sql_query('INSERT INTO ' . LOG_TABLE . ' ' . phpbb::$db->sql_build_array('INSERT', $sql_ary));
 
-	return $db->sql_nextid();
+	return phpbb::$db->sql_nextid();
 }
 
 /**
@@ -1748,6 +1746,11 @@ function get_backtrace()
 			continue;
 		}
 
+		if (empty($trace['file']) && empty($trace['line']))
+		{
+			continue;
+		}
+		
 		// Strip the current directory from path
 		if (empty($trace['file']))
 		{
@@ -2055,11 +2058,11 @@ function msg_handler($errno, $msg_text, $errfile, $errline)
 			echo '		<div id="content">';
 			echo '			<h1>' . $msg_title . '</h1>';
 
-			echo '			<div>' . $msg_text . '<br /><br />';
+			echo '			<div>' . $msg_text;
 
-			if (defined('DEBUG_EXTRA'))
+			if ((phpbb::registered('acl') && phpbb::$acl->acl_get('a_')) || defined('IN_INSTALL') || defined('DEBUG_EXTRA'))
 			{
-				echo get_backtrace();
+				echo ($backtrace = get_backtrace()) ? '<br /><br />BACKTRACE' . $backtrace : '';
 			}
 			echo '</div>';
 

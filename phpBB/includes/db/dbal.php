@@ -672,10 +672,10 @@ class phpbb_dbal
 			if ((isset($auth) && $auth->acl_get('a_')) || defined('IN_INSTALL') || defined('DEBUG_EXTRA'))
 			{
 				// Print out a nice backtrace...
-				$backtrace = get_backtrace();
+//				$backtrace = get_backtrace();
 
 				$message .= ($sql) ? '<br /><br />SQL<br /><br />' . htmlspecialchars($sql) : '';
-				$message .= ($backtrace) ? '<br /><br />BACKTRACE<br />' . $backtrace : '';
+//				$message .= ($backtrace) ? '<br /><br />BACKTRACE<br />' . $backtrace : '';
 				$message .= '<br />';
 			}
 			else
