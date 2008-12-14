@@ -141,15 +141,10 @@ foreach (phpbb_cache::obtain_hooks() as $hook)
 	@include(PHPBB_ROOT_PATH . 'includes/hooks/' . $hook . '.' . PHP_EXT);
 }*/
 
-// Instantiate bare-bone user object
-// Start session management, inits ACL class too
-// User->init is a collection of phpbb::$user->session_begin() and phpbb::$auth->acl()
-if (PHPBB_FRAMEWORK_FULL)
-{
-	phpbb::$user->init();
-}
-
 // Within the user-facing files we call:
 //phpbb::$user->start();
+
+// Register API
+phpbb::register('api');
 
 ?>

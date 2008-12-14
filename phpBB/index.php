@@ -21,7 +21,10 @@ include(PHPBB_ROOT_PATH . 'common.' . PHP_EXT);
 include(PHPBB_ROOT_PATH . 'includes/functions_display.' . PHP_EXT);
 
 // Start session management
+phpbb::$user->init();
 phpbb::$user->setup('viewforum');
+
+echo phpbb::$user->system['path'];
 
 display_forums('', phpbb::$config['load_moderators']);
 

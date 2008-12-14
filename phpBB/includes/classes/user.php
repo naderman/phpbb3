@@ -52,9 +52,9 @@ class phpbb_user extends phpbb_session
 		$this->lang_path = PHPBB_ROOT_PATH . 'language/';
 	}
 
-	public function init()
+	public function init($update_session_page = true)
 	{
-		$this->session_begin();
+		$this->session_begin($update_session_page);
 		phpbb::$acl->init($this->data);
 	}
 

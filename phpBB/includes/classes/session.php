@@ -16,236 +16,6 @@ if (!defined('IN_PHPBB'))
 	exit;
 }
 
-class phpbb_server
-{
-	/**
-	* Get valid hostname/port. HTTP_HOST is used, SERVER_NAME if HTTP_HOST not present.
-	*/
-	public static function get_host()
-	{
-		// Get hostname
-		$host = (!empty($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : ((!empty($_SERVER['SERVER_NAME'])) ? $_SERVER['SERVER_NAME'] : getenv('SERVER_NAME'));
-
-		// Should be a string and lowered
-		$host = (string) strtolower($host);
-
-		// If host is equal the cookie domain or the server name (if config is set), then we assume it is valid
-		if ((isset(phpbb::$config['cookie_domain']) && $host === phpbb::$config['cookie_domain']) || (isset(phpbb::$config['server_name']) && $host === phpbb::$config['server_name']))
-		{
-			return $host;
-		}
-
-		// Is the host actually a IP? If so, we use the IP... (IPv4)
-		if (long2ip(ip2long($host)) === $host)
-		{
-			return $host;
-		}
-
-		// Now return the hostname (this also removes any port definition). The http:// is prepended to construct a valid URL, hosts never have a scheme assigned
-		$host = @parse_url('http://' . $host, PHP_URL_HOST);
-
-		// Remove any portions not removed by parse_url (#)
-		$host = str_replace('#', '', $host);
-
-		// If, by any means, the host is now empty, we will use a "best approach" way to guess one
-		if (empty($host))
-		{
-			if (!empty(phpbb::$config['server_name']))
-			{
-				$host = phpbb::$config['server_name'];
-			}
-			else if (!empty(phpbb::$config['cookie_domain']))
-			{
-				$host = (strpos(phpbb::$config['cookie_domain'], '.') === 0) ? substr(phpbb::$config['cookie_domain'], 1) : phpbb::$config['cookie_domain'];
-			}
-			else
-			{
-				// Set to OS hostname or localhost
-				$host = (function_exists('php_uname')) ? php_uname('n') : 'localhost';
-			}
-		}
-
-		// It may be still no valid host, but for sure only a hostname (we may further expand on the cookie domain... if set)
-		return $host;
-	}
-
-	/**
-	* Extract current session page, relative from current root path (PHPBB_ROOT_PATH)
-	*/
-	public static function get_page()
-	{
-		$page_array = array();
-
-		// First of all, get the request uri...
-		$script_name = (!empty($_SERVER['PHP_SELF'])) ? $_SERVER['PHP_SELF'] : getenv('PHP_SELF');
-		$args = (!empty($_SERVER['QUERY_STRING'])) ? explode('&', $_SERVER['QUERY_STRING']) : explode('&', getenv('QUERY_STRING'));
-
-		// If we are unable to get the script name we use REQUEST_URI as a failover and note it within the page array for easier support...
-		if (!$script_name)
-		{
-			$script_name = (!empty($_SERVER['REQUEST_URI'])) ? $_SERVER['REQUEST_URI'] : getenv('REQUEST_URI');
-			$script_name = (($pos = strpos($script_name, '?')) !== false) ? substr($script_name, 0, $pos) : $script_name;
-			$page_array['failover'] = 1;
-		}
-
-		// Replace backslashes and doubled slashes (could happen on some proxy setups)
-		$script_name = str_replace(array('\\', '//'), '/', $script_name);
-
-		// Now, remove the sid and let us get a clean query string...
-		$use_args = array();
-
-		// Since some browser do not encode correctly we need to do this with some "special" characters...
-		// " -> %22, ' => %27, < -> %3C, > -> %3E
-		$find = array('"', "'", '<', '>');
-		$replace = array('%22', '%27', '%3C', '%3E');
-
-		foreach ($args as $argument)
-		{
-			if (strpos($argument, 'sid=') === 0)
-			{
-				continue;
-			}
-
-			$use_args[] = str_replace($find, $replace, $argument);
-		}
-		unset($args);
-
-		// The following examples given are for an request uri of {path to the phpbb directory}/adm/index.php?i=10&b=2
-
-		// The current query string
-		$query_string = trim(implode('&', $use_args));
-
-		// basenamed page name (for example: index.php)
-		$page_name = basename($script_name);
-		$page_name = urlencode(htmlspecialchars($page_name));
-
-		// current directory within the phpBB root (for example: adm)
-		$root_dirs = explode('/', str_replace('\\', '/', phpbb::$url->realpath(PHPBB_ROOT_PATH)));
-		$page_dirs = explode('/', str_replace('\\', '/', phpbb::$url->realpath('./')));
-		$intersection = array_intersect_assoc($root_dirs, $page_dirs);
-
-		$root_dirs = array_diff_assoc($root_dirs, $intersection);
-		$page_dirs = array_diff_assoc($page_dirs, $intersection);
-
-		$page_dir = str_repeat('../', sizeof($root_dirs)) . implode('/', $page_dirs);
-
-		if ($page_dir && substr($page_dir, -1, 1) == '/')
-		{
-			$page_dir = substr($page_dir, 0, -1);
-		}
-
-		// Current page from phpBB root (for example: adm/index.php?i=10&b=2)
-		$page = (($page_dir) ? $page_dir . '/' : '') . $page_name . (($query_string) ? "?$query_string" : '');
-
-		// The script path from the webroot to the current directory (for example: /phpBB3/adm/) : always prefixed with / and ends in /
-		$script_path = trim(str_replace('\\', '/', dirname($script_name)));
-
-		// The script path from the webroot to the phpBB root (for example: /phpBB3/)
-		$script_dirs = explode('/', $script_path);
-		array_splice($script_dirs, -sizeof($page_dirs));
-		$root_script_path = implode('/', $script_dirs) . (sizeof($root_dirs) ? '/' . implode('/', $root_dirs) : '');
-
-		// We are on the base level (phpBB root == webroot), lets adjust the variables a bit...
-		if (!$root_script_path)
-		{
-			$root_script_path = ($page_dir) ? str_replace($page_dir, '', $script_path) : $script_path;
-		}
-
-		$script_path .= (substr($script_path, -1, 1) == '/') ? '' : '/';
-		$root_script_path .= (substr($root_script_path, -1, 1) == '/') ? '' : '/';
-
-		$page_array += array(
-			'page_name'			=> $page_name,
-			'page_dir'			=> $page_dir,
-
-			'query_string'		=> $query_string,
-			'script_path'		=> str_replace(' ', '%20', htmlspecialchars($script_path)),
-			'root_script_path'	=> str_replace(' ', '%20', htmlspecialchars($root_script_path)),
-
-			'page'				=> $page,
-			'forum'				=> request_var('f', 0),
-		);
-
-		return $page_array;
-	}
-
-	public static function get_browser()
-	{
-		return (!empty($_SERVER['HTTP_USER_AGENT'])) ? htmlspecialchars((string) $_SERVER['HTTP_USER_AGENT']) : '';
-	}
-
-	public static function get_referer()
-	{
-		return (!empty($_SERVER['HTTP_REFERER'])) ? htmlspecialchars((string) $_SERVER['HTTP_REFERER']) : '';
-	}
-
-	public static function get_port()
-	{
-		return (!empty($_SERVER['SERVER_PORT'])) ? (int) $_SERVER['SERVER_PORT'] : (int) getenv('SERVER_PORT');
-	}
-
-	public static function get_forwarded_for()
-	{
-		$forwarded_for = (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) ? (string) $_SERVER['HTTP_X_FORWARDED_FOR'] : '';
-
-		// if the forwarded for header shall be checked we have to validate its contents
-		if (phpbb::$config['forwarded_for_check'])
-		{
-			$forwarded_for = preg_replace('#, +#', ', ', $forwarded_for);
-
-			// split the list of IPs
-			$ips = explode(', ', $forwarded_for);
-			foreach ($ips as $ip)
-			{
-				// check IPv4 first, the IPv6 is hopefully only going to be used very seldomly
-				if (!empty($ip) && !preg_match(get_preg_expression('ipv4'), $ip) && !preg_match(get_preg_expression('ipv6'), $ip))
-				{
-					// contains invalid data, don't use the forwarded for header
-					return '';
-				}
-			}
-		}
-		else
-		{
-			return '';
-		}
-	}
-
-	public static function get_ip()
-	{
-		// Why no forwarded_for et al? Well, too easily spoofed. With the results of my recent requests
-		// it's pretty clear that in the majority of cases you'll at least be left with a proxy/cache ip.
-		return (!empty($_SERVER['REMOTE_ADDR'])) ? htmlspecialchars($_SERVER['REMOTE_ADDR']) : '';
-	}
-
-	public static function get_load()
-	{
-		$load = false;
-
-		// Load limit check (if applicable)
-		if (phpbb::$config['limit_load'] || phpbb::$config['limit_search_load'])
-		{
-			if ((function_exists('sys_getloadavg') && $load = sys_getloadavg()) || ($load = explode(' ', @file_get_contents('/proc/loadavg'))))
-			{
-				$load = array_slice($load, 0, 1);
-				$load = floatval($load[0]);
-			}
-			else
-			{
-				set_config('limit_load', '0');
-				set_config('limit_search_load', '0');
-			}
-		}
-
-		return $load;
-	}
-
-	public static function get_request_method()
-	{
-		return (isset($_SERVER['REQUEST_METHOD'])) ? strtolower(htmlspecialchars((string) $_SERVER['REQUEST_METHOD'])) : '';
-	}
-}
-
 /**
 * Session class
 * @package phpBB3
@@ -255,12 +25,12 @@ class phpbb_session
 	private $cookie_data = array();
 
 	public $data = array();
-	public $server = array();
 	public $session_id = '';
 	public $time_now = 0;
 	public $update_session_page = true;
 
 	public $auth = NULL;
+	public $system = NULL;
 
 	public $is_registered = false;
 	public $is_bot = false;
@@ -274,6 +44,10 @@ class phpbb_session
 		$method = basename(trim(phpbb::$config['auth_method']));
 		$class = 'phpbb_auth_' . $method;
 		$this->auth = new $class();
+
+		// Some system/server variables, directly generated by phpbb_system methods. Used like an array.
+		// We use the phpbb:: one, because it could've been modified and being a completely different class
+		$this->system = &phpbb::$instances['system'];
 	}
 
 	/**
@@ -297,19 +71,6 @@ class phpbb_session
 		$this->time_now				= time();
 		$this->cookie_data			= array('u' => 0, 'k' => '');
 		$this->update_session_page	= $update_session_page;
-
-		// Some server variables, directly generated by phpbb_server methods
-		$this->server = array();
-
-		foreach (get_class_methods('phpbb_server') as $method)
-		{
-			if (strpos($method, 'get_') !== 0)
-			{
-				continue;
-			}
-
-			$this->server[substr($method, 4)] = phpbb_server::$method();
-		}
 
 		if (request::is_set(phpbb::$config['cookie_name'] . '_sid', request::COOKIE) || request::is_set(phpbb::$config['cookie_name'] . '_u', request::COOKIE))
 		{
@@ -373,13 +134,6 @@ class phpbb_session
 		}
 
 		$this->data = array();
-
-		/* Garbage collection ... remove old sessions updating user information
-		// if necessary. It means (potentially) 11 queries but only infrequently
-		if ($this->time_now > phpbb::$config['session_last_gc'] + phpbb::$config['session_gc'])
-		{
-			$this->session_gc();
-		}*/
 
 		// Do we allow autologin on this board? No? Then override anything
 		// that may be requested here
@@ -500,14 +254,14 @@ class phpbb_session
 					$this->session_id = $this->data['session_id'];
 
 					// Only update session DB a minute or so after last update or if page changes
-					if ($this->time_now - $this->data['session_time'] > 60 || ($this->update_session_page && $this->data['session_page'] != $this->server['page']['page']))
+					if ($this->time_now - $this->data['session_time'] > 60 || ($this->update_session_page && $this->data['session_page'] != $this->system['page']['page']))
 					{
 						$this->data['session_time'] = $this->data['session_last_visit'] = $this->time_now;
 						$sql_ary = array('session_time' => $this->time_now, 'session_last_visit' => $this->time_now, 'session_admin' => 0);
 
 						if ($this->update_session_page)
 						{
-							$sql_ary['session_page'] = substr($this->server['page']['page'], 0, 199);
+							$sql_ary['session_page'] = substr($this->system['page']['page'], 0, 199);
 						}
 
 						$sql = 'UPDATE ' . SESSIONS_TABLE . ' SET ' . phpbb::$db->sql_build_array('UPDATE', $sql_ary) . "
@@ -549,12 +303,12 @@ class phpbb_session
 		{
 			if (!phpbb::$config['forwarded_for_check'])
 			{
-				$this->check_ban($this->data['user_id'], $this->server['ip']);
+				$this->check_ban($this->data['user_id'], $this->system['ip']);
 			}
 			else
 			{
 				$ips = explode(', ', $this->forwarded_for);
-				$ips[] = $this->server['ip'];
+				$ips[] = $this->system['ip'];
 				$this->check_ban($this->data['user_id'], $ips);
 			}
 		}
@@ -568,9 +322,9 @@ class phpbb_session
 			'session_start'			=> (int) $this->time_now,
 			'session_last_visit'	=> (int) $this->data['session_last_visit'],
 			'session_time'			=> (int) $this->time_now,
-			'session_browser'		=> (string) trim(substr($this->server['browser'], 0, 149)),
-			'session_forwarded_for'	=> (string) $this->server['forwarded_for'],
-			'session_ip'			=> (string) $this->server['ip'],
+			'session_browser'		=> (string) trim(substr($this->system['browser'], 0, 149)),
+			'session_forwarded_for'	=> (string) $this->system['forwarded_for'],
+			'session_ip'			=> (string) $this->system['ip'],
 			'session_autologin'		=> ($session_autologin) ? 1 : 0,
 			'session_admin'			=> ($set_admin) ? 1 : 0,
 			'session_viewonline'	=> ($viewonline) ? 1 : 0,
@@ -578,7 +332,7 @@ class phpbb_session
 
 		if ($this->update_session_page)
 		{
-			$sql_ary['session_page'] = (string) substr($this->server['page']['page'], 0, 199);
+			$sql_ary['session_page'] = (string) substr($this->system['page']['page'], 0, 199);
 		}
 
 		phpbb::$db->sql_return_on_error(true);
@@ -642,8 +396,8 @@ class phpbb_session
 
 			// Only one session entry present...
 			$sql = 'SELECT COUNT(session_id) AS sessions
-					FROM ' . SESSIONS_TABLE . '
-					WHERE session_user_id = ' . (int) $this->data['user_id'] . '
+				FROM ' . SESSIONS_TABLE . '
+				WHERE session_user_id = ' . (int) $this->data['user_id'] . '
 					AND session_time >= ' . (int) ($this->time_now - (max(phpbb::$config['session_length'], phpbb::$config['form_token_lifetime'])));
 			$result = phpbb::$db->sql_query($sql);
 			$row = phpbb::$db->sql_fetchrow($result);
@@ -1053,7 +807,7 @@ class phpbb_session
 	{
 		if ($ip === false)
 		{
-			$ip = $this->server['ip'];
+			$ip = $this->system['ip'];
 		}
 
 		$dnsbl_check = array(
@@ -1108,14 +862,14 @@ class phpbb_session
 	public function set_login_key($user_id = false, $key = false, $user_ip = false)
 	{
 		$user_id = ($user_id === false) ? $this->data['user_id'] : $user_id;
-		$user_ip = ($user_ip === false) ? $this->server['ip'] : $user_ip;
+		$user_ip = ($user_ip === false) ? $this->system['ip'] : $user_ip;
 		$key = ($key === false) ? (($this->cookie_data['k']) ? $this->cookie_data['k'] : false) : $key;
 
 		$key_id = phpbb::$security->unique_id(hexdec(substr($this->session_id, 0, 8)));
 
 		$sql_ary = array(
 			'key_id'		=> (string) md5($key_id),
-			'last_ip'		=> (string) $this->server['ip'],
+			'last_ip'		=> (string) $this->system['ip'],
 			'last_login'	=> (int) $this->time_now,
 		);
 
@@ -1252,14 +1006,14 @@ class phpbb_session
 		}
 
 		// Only update session DB a minute or so after last update or if page changes
-		if ($this->time_now - $this->data['session_time'] > 60 || ($this->update_session_page && $this->data['session_page'] != $this->server['page']['page']))
+		if ($this->time_now - $this->data['session_time'] > 60 || ($this->update_session_page && $this->data['session_page'] != $this->system['page']['page']))
 		{
 			$sql_ary = array('session_time' => $this->time_now);
 
 			if ($this->update_session_page)
 			{
-				$sql_ary['session_page'] = substr($this->server['page']['page'], 0, 199);
-				$sql_ary['session_forum_id'] = $this->server['page']['forum'];
+				$sql_ary['session_page'] = substr($this->system['page']['page'], 0, 199);
+				$sql_ary['session_forum_id'] = $this->system['page']['forum'];
 			}
 
 			$sql = 'UPDATE ' . SESSIONS_TABLE . ' SET ' . phpbb::$db->sql_build_array('UPDATE', $sql_ary) . "
@@ -1281,30 +1035,30 @@ class phpbb_session
 	private function validate_referer($check_script_path = false)
 	{
 		// no referer - nothing to validate, user's fault for turning it off (we only check on POST; so meta can't be the reason)
-		if (empty($this->server['referer']) || empty($this->server['host']))
+		if (empty($this->system['referer']) || empty($this->system['host']))
 		{
 			return true;
 		}
 
 		// Specialchar host, because it's the only one not specialchared
-		$host = htmlspecialchars($this->server['host']);
-		$ref = substr($this->server['referer'], strpos($this->server['referer'], '://') + 3);
+		$host = htmlspecialchars($this->system['host']);
+		$ref = substr($this->system['referer'], strpos($this->system['referer'], '://') + 3);
 
 		if (!(stripos($ref, $host) === 0))
 		{
 			return false;
 		}
-		else if ($check_script_path && rtrim($this->server['page']['root_script_path'], '/') !== '')
+		else if ($check_script_path && rtrim($this->system['page']['root_script_path'], '/') !== '')
 		{
 			$ref = substr($ref, strlen($host));
-			$server_port = $this->server['port'];
+			$server_port = $this->system['port'];
 
 			if ($server_port !== 80 && $server_port !== 443 && stripos($ref, ":$server_port") === 0)
 			{
 				$ref = substr($ref, strlen(":$server_port"));
 			}
 
-			if (!(stripos(rtrim($ref, '/'), rtrim($this->server['page']['root_script_path'], '/')) === 0))
+			if (!(stripos(rtrim($ref, '/'), rtrim($this->system['page']['root_script_path'], '/')) === 0))
 			{
 				return false;
 			}
@@ -1332,7 +1086,7 @@ class phpbb_session
 
 		foreach (phpbb_cache::obtain_bots() as $row)
 		{
-			if ($row['bot_agent'] && preg_match('#' . str_replace('\*', '.*?', preg_quote($row['bot_agent'], '#')) . '#i', $this->server['browser']))
+			if ($row['bot_agent'] && preg_match('#' . str_replace('\*', '.*?', preg_quote($row['bot_agent'], '#')) . '#i', $this->system['browser']))
 			{
 				$bot = $row['user_id'];
 			}
@@ -1345,7 +1099,7 @@ class phpbb_session
 
 				foreach (explode(',', $row['bot_ip']) as $bot_ip)
 				{
-					if (strpos($this->server['ip'], $bot_ip) === 0)
+					if (strpos($this->system['ip'], $bot_ip) === 0)
 					{
 						$bot = (int) $row['user_id'];
 						break;
@@ -1371,29 +1125,29 @@ class phpbb_session
 		// check on bots if admin requires this
 //		$quadcheck = (phpbb::$config['ip_check_bot'] && $this->data['user_type'] & USER_BOT) ? 4 : phpbb::$config['ip_check'];
 
-		if (strpos($this->server['ip'], ':') !== false && strpos($this->data['session_ip'], ':') !== false)
+		if (strpos($this->system['ip'], ':') !== false && strpos($this->data['session_ip'], ':') !== false)
 		{
 			$session_ip = short_ipv6($this->data['session_ip'], phpbb::$config['ip_check']);
-			$user_ip = short_ipv6($this->server['ip'], phpbb::$config['ip_check']);
+			$user_ip = short_ipv6($this->system['ip'], phpbb::$config['ip_check']);
 		}
 		else
 		{
 			$session_ip = implode('.', array_slice(explode('.', $this->data['session_ip']), 0, phpbb::$config['ip_check']));
-			$user_ip = implode('.', array_slice(explode('.', $this->server['ip']), 0, phpbb::$config['ip_check']));
+			$user_ip = implode('.', array_slice(explode('.', $this->system['ip']), 0, phpbb::$config['ip_check']));
 		}
 
 		$session_browser = (phpbb::$config['browser_check']) ? trim(strtolower(substr($this->data['session_browser'], 0, 149))) : '';
-		$user_browser = (phpbb::$config['browser_check']) ? trim(strtolower(substr($this->server['browser'], 0, 149))) : '';
+		$user_browser = (phpbb::$config['browser_check']) ? trim(strtolower(substr($this->system['browser'], 0, 149))) : '';
 
 		$session_forwarded_for = (phpbb::$config['forwarded_for_check']) ? substr($this->data['session_forwarded_for'], 0, 254) : '';
-		$user_forwarded_for = (phpbb::$config['forwarded_for_check']) ? substr($this->server['forwarded_for'], 0, 254) : '';
+		$user_forwarded_for = (phpbb::$config['forwarded_for_check']) ? substr($this->system['forwarded_for'], 0, 254) : '';
 
 		// referer checks
 		$check_referer_path = phpbb::$config['referer_validation'] == REFERER_VALIDATE_PATH;
 		$referer_valid = true;
 
 		// we assume HEAD and TRACE to be foul play and thus only whitelist GET
-		if (phpbb::$config['referer_validation'] && $this->server['request_method'])
+		if (phpbb::$config['referer_validation'] && $this->system['request_method'])
 		{
 			$referer_valid = $this->validate_referer($check_referer_path);
 		}
@@ -1409,7 +1163,7 @@ class phpbb_session
 				}
 				else
 				{
-					add_log('critical', 'LOG_REFERER_INVALID', $this->server['referer']);
+					add_log('critical', 'LOG_REFERER_INVALID', $this->system['referer']);
 				}
 			}
 

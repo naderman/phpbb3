@@ -35,7 +35,7 @@ else
 }
 
 // Initialize some standard variables, constants and classes we need
-include_once(PHPBB_ROOT_PATH . 'includes/core/init.' . PHP_EXT);
+include_once(PHPBB_ROOT_PATH . 'includes/core/core.' . PHP_EXT);
 
 // If we are on PHP >= 6.0.0 we do not need some code
 if (version_compare(PHP_VERSION, '6.0.0-dev', '>='))
@@ -126,39 +126,44 @@ include_once PHPBB_ROOT_PATH . 'includes/constants.' . PHP_EXT;
 // Add global functions
 require_once PHPBB_ROOT_PATH . 'includes/functions.' . PHP_EXT;
 require_once PHPBB_ROOT_PATH . 'includes/functions_content.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'includes/utf/utf_tools.' . PHP_EXT;
 
-// Cache without cache? :)
-// @todo Do we really need this? This may be useful... but at the contrary not used...
-if (!function_exists('glob'))
-{
-	foreach (glob(PHPBB_ROOT_PATH . 'includes/core/core_*.' . PHP_EXT) as $filename)
-	{
-		require_once $filename;
-	}
-}
-else
-{
-	// Now search for required core files...
-	$dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/');
+// Add pre-defined system core files
+require_once PHPBB_ROOT_PATH . 'includes/core/request.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'includes/core/security.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'includes/core/system.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'includes/core/url.' . PHP_EXT;
 
-	if ($dh)
+phpbb::register('security');
+phpbb::register('url');
+phpbb::register('system');
+
+// Now search for required core files...
+if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/'))
+{
+	while (($file = readdir($dh)) !== false)
 	{
-		while (($file = readdir($dh)) !== false)
+		if (strpos($file, 'core_') === 0 && substr($file, -(strlen(PHP_EXT) + 1)) === '.' . PHP_EXT)
 		{
-			if (strpos($file, 'core_') === 0 && substr($file, -(strlen(PHP_EXT) + 1)) === '.' . PHP_EXT)
+			$name = substr($file, 5, -strlen(PHP_EXT) - 1);
+			$class_name = 'phpbb_core_' . $name;
+
+			require_once PHPBB_ROOT_PATH . 'includes/core/' . $file;
+			if (class_exists($class_name, false))
 			{
-				require_once PHPBB_ROOT_PATH . 'includes/core/' . $file;
+				if (property_exists($class_name, '_instantiate'))
+				{
+					if (phpbb::registered($name))
+					{
+						phpbb::unregister($name);
+					}
+
+					phpbb::register($name, $class_name);
+				}
 			}
 		}
-		closedir($dh);
 	}
+	closedir($dh);
 }
-
-// Register core classes
-phpbb::register('url');
-phpbb::register('security');
-
-// Some more required classes
-require_once(PHPBB_ROOT_PATH . 'includes/utf/utf_tools.' . PHP_EXT);
 
 ?>

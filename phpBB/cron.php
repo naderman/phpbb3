@@ -17,8 +17,7 @@ if (!defined('PHP_EXT')) define('PHP_EXT', substr(strrchr(__FILE__, '.'), 1));
 include(PHPBB_ROOT_PATH . 'common.' . PHP_EXT);
 
 // Do not update users last page entry
-$user->session_begin(false);
-$auth->acl($user->data);
+phpbb::$user->init(false);
 
 $cron_type = request_var('cron_type', '');
 $use_shutdown_function = (@function_exists('register_shutdown_function')) ? true : false;
@@ -30,21 +29,18 @@ header('Content-length: 43');
 
 echo base64_decode('R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==');
 
-// test without flush ;)
-// flush();
-
 //
-if (!isset($config['cron_lock']))
+if (!isset(phpbb::$config['cron_lock']))
 {
 	set_config('cron_lock', '0', true);
 }
 
 // make sure cron doesn't run multiple times in parallel
-if ($config['cron_lock'])
+if (phpbb::$config['cron_lock'])
 {
 	// if the other process is running more than an hour already we have to assume it
 	// aborted without cleaning the lock
-	$time = explode(' ', $config['cron_lock']);
+	$time = explode(' ', phpbb::$config['cron_lock']);
 	$time = $time[0];
 
 	if ($time + 3600 >= time())
@@ -53,15 +49,15 @@ if ($config['cron_lock'])
 	}
 }
 
-define('CRON_ID', time() . ' ' . unique_id());
+define('CRON_ID', time() . ' ' . phpbb::$security->unique_id());
 
 $sql = 'UPDATE ' . CONFIG_TABLE . "
-	SET config_value = '" . $db->sql_escape(CRON_ID) . "'
-	WHERE config_name = 'cron_lock' AND config_value = '" . $db->sql_escape($config['cron_lock']) . "'";
-$db->sql_query($sql);
+	SET config_value = '" . phpbb::$db->sql_escape(CRON_ID) . "'
+	WHERE config_name = 'cron_lock' AND config_value = '" . phpbb::$db->sql_escape(phpbb::$config['cron_lock']) . "'";
+phpbb::$db->sql_query($sql);
 
 // another cron process altered the table between script start and UPDATE query so exit
-if ($db->sql_affectedrows() != 1)
+if (phpbb::$db->sql_affectedrows() != 1)
 {
 	exit;
 }
@@ -74,13 +70,13 @@ switch ($cron_type)
 {
 	case 'queue':
 
-		if (time() - $config['queue_interval'] <= $config['last_queue_run'] || !file_exists(PHPBB_ROOT_PATH . 'cache/queue.' . PHP_EXT))
+		if (time() - phpbb::$config['queue_interval'] <= phpbb::$config['last_queue_run'] || !file_exists(PHPBB_ROOT_PATH . 'cache/queue.' . PHP_EXT))
 		{
 			break;
 		}
 
 		// A user reported using the mail() function while using shutdown does not work. We do not want to risk that.
-		if ($use_shutdown_function && !$config['smtp_delivery'])
+		if ($use_shutdown_function && !phpbb::$config['smtp_delivery'])
 		{
 			$use_shutdown_function = false;
 		}
@@ -101,18 +97,18 @@ switch ($cron_type)
 
 	case 'tidy_cache':
 
-		if (time() - $config['cache_gc'] <= $config['cache_last_gc'] || !method_exists($cache, 'tidy'))
+		if (time() - phpbb::$config['cache_gc'] <= phpbb::$config['cache_last_gc'] || !method_exists(phpbb::$acm, 'tidy'))
 		{
 			break;
 		}
 
 		if ($use_shutdown_function)
 		{
-			register_shutdown_function(array(&$cache, 'tidy'));
+			register_shutdown_function(array(&phpbb::$acm, 'tidy'));
 		}
 		else
 		{
-			$cache->tidy();
+			phpbb::$acm->tidy();
 		}
 
 	break;
@@ -270,18 +266,15 @@ else
 
 exit;
 
-
 /**
 * Unlock cron script
 */
 function unlock_cron()
 {
-	global $db;
-
 	$sql = 'UPDATE ' . CONFIG_TABLE . "
 		SET config_value = '0'
-		WHERE config_name = 'cron_lock' AND config_value = '" . $db->sql_escape(CRON_ID) . "'";
-	$db->sql_query($sql);
+		WHERE config_name = 'cron_lock' AND config_value = '" . phpbb::$db->sql_escape(CRON_ID) . "'";
+	phpbb::$db->sql_query($sql);
 }
 
 ?>

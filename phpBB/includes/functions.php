@@ -1689,7 +1689,7 @@ function add_log()
 
 	$sql_ary = array(
 		'user_id'		=> (empty(phpbb::$user->data)) ? ANONYMOUS : phpbb::$user->data['user_id'],
-		'log_ip'		=> phpbb::$user->server['ip'],
+		'log_ip'		=> phpbb::$user->system['ip'],
 		'log_time'		=> time(),
 		'log_operation'	=> $action,
 		'log_data'		=> $data,
@@ -2371,7 +2371,7 @@ function page_header($page_title = '', $display_online_list = true)
 		'SITENAME'						=> phpbb::$config['sitename'],
 		'SITE_DESCRIPTION'				=> phpbb::$config['site_desc'],
 		'PAGE_TITLE'					=> $page_title,
-		'SCRIPT_NAME'					=> str_replace('.' . PHP_EXT, '', phpbb::$user->server['page']['page_name']),
+		'SCRIPT_NAME'					=> str_replace('.' . PHP_EXT, '', phpbb::$user->system['page']['page_name']),
 		'LAST_VISIT_DATE'				=> phpbb::$user->lang('YOU_LAST_VISIT', $s_last_visit),
 		'LAST_VISIT_YOU'				=> $s_last_visit,
 		'CURRENT_TIME'					=> phpbb::$user->lang('CURRENT_TIME', phpbb::$user->format_date(time(), false, true)),
@@ -2482,7 +2482,7 @@ function page_footer($run_cron = true)
 			phpbb::$db->sql_report('display');
 		}
 
-		$debug_output = sprintf('Time : %.3fs | ' . phpbb::$db->sql_num_queries() . ' Queries | GZIP : ' . ((phpbb::$config['gzip_compress']) ? 'On' : 'Off') . ((phpbb::$user->server['load']) ? ' | Load : ' . phpbb::$user->server['load'] : ''), $totaltime);
+		$debug_output = sprintf('Time : %.3fs | ' . phpbb::$db->sql_num_queries() . ' Queries | GZIP : ' . ((phpbb::$config['gzip_compress']) ? 'On' : 'Off') . ((phpbb::$user->system['load']) ? ' | Load : ' . phpbb::$user->system['load'] : ''), $totaltime);
 
 		if (phpbb::$acl->acl_get('a_') && defined('DEBUG_EXTRA'))
 		{
