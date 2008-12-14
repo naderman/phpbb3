@@ -32,6 +32,8 @@ class phpbb
 	public static $url = NULL;
 	public static $security = NULL;
 
+	public static $api = NULL;
+
 	public static $config = array();
 	/**#@-*/
 
@@ -166,7 +168,7 @@ class phpbb
 	{
 		if (!property_exists('phpbb', $variable))
 		{
-			unset(self::$insances[$variable]);
+			unset(self::$instances[$variable]);
 		}
 		else
 		{
@@ -218,4 +220,9 @@ function __phpbb_autoload($class_name)
 	}
 }
 
+/*
+class phpbb_exception extends Exception
+{
+}
+*/
 ?>
