@@ -1,0 +1,127 @@
+/**
+* Directory/File layout
+*/
+
+*Directories with special handling*
+
+/includes/core/ - Main Core files
+	index.php: This file is called from common.php and initializes the phpBB Core
+	core.php: Main file defining the phpbb:: superclass and the SPL autoload function 
+
+	Pre-defined core files:
+		These files consist of classes defining functions/methods used all over the main product.
+
+		Filename			Class Name					Static		Instatiated		Callable through
+		request.php			deactivated_super_global	No			No				*Private*
+							request						Yes			No				request::
+		security.php		phpbb_security				No			Yes				phpbb::$security
+		system.php			phpbb_system				No			Yes				get system host with phpbb::$user->system['host'], phpbb::call('system')->get_host() internally
+		url.php				phpbb_url					No			Yes				phpbb::$url
+
+	Files prefixed with core_:
+		These files are custom files loaded after the main pre-defined core files. They have special rules and different names. Developers can extend from the core classes.
+		
+		Naming schema:
+			- Prefix files with core_
+			- The filename must match the class name used
+			- The class name must be prefixed with phpbb_core_
+			- A file called core_example.php defines a class phpbb_core_example
+			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb:: by it's name automatically
+			- The resulting object is callable with phpbb::call('example')
+
+		Some examples with their cases:
+		
+		Filename			Class Name					Static		Instatiated		Callable through
+		core_example.php	phpbb_core_example			No			No				*Private*
+		core_example.php	phpbb_core_example			No			Yes				phpbb::call('example')
+		core_example.php	phpbb_core_example			Yes			No				phpbb_core_example::
+		core_security.php	phpbb_core_security
+								extends phpbb_security	No			Yes				overwrites phpbb::$security
+		
+		Important note:
+			If you haven't noticed, if there is a file and class with the same name as one pre-defined core file...
+			then the class assigned will be changed to the custom class (phpbb_core_security above).
+
+			This works for:
+			security, system, url
+			
+			Example use-case:
+			
+			- You want to get additional system variables for your application, for example the PATH environment variable.
+			- Drop in a file: /includes/core/core_system.php
+			- The file contents should look like:
+			
+			[code]
+			<?php
+				class phpbb_core_system extends phpbb_system
+				{
+					public $_instantiate = true;
+					
+					/**
+					* Get PATH environment variable
+					*/
+					protected function get_path()
+					{
+						// Return PATH
+						return (!empty($_SERVER['PATH'])) ? $_SERVER['PATH'] : getenv('PATH');
+					}
+				}
+			?>
+			[/code]
+			
+			- access your PATH environment variable through phpbb::$user->system['path'];
+			
+			
+
+/includes/api/ - API Files
+	index.php: This file is called by /includes/core/index.php to initialize the basic phpBB API, callable through phpbb::API::
+	
+	Pre-defined core files:
+		These files consist of classes defining functions/methods used all over the main product.
+
+		Filename			Class Name					Static		Instatiated		Callable through
+		user.php			phpbb_api_user				No			Yes				phpbb::$api->$user->
+
+	Files prefixed with api_:
+		These files consist of classes defining functions/methods used for the api.
+		Naming schema:
+			- Prefix files with api_
+			- The filename must match the class name used
+			- The class name must be prefixed with phpbb__api_ (note the difference here is two __ instead of one _)
+			- A file called api_example.php defines a class phpbb__api_example
+			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb::$api with it's name automatically
+			- The resulting object is callable with phpbb::$api->$example
+		
+		Some examples with their cases:
+		
+		Filename			Class Name					Static		Instatiated		Callable through
+		api_example.php		phpbb__api_example			No			No				*Private*
+		api_example.php		phpbb__api_example			No			Yes				phpbb::$api->$example->
+		api_example.php		phpbb__api_example			Yes			No				phpbb__api_example::
+		api_user.php		phpbb__api_user
+								extends phpbb_api_user	No			Yes				overwrites phpbb::$api->$user
+
+		Important note:
+			If you haven't noticed, if there is a file and class with the same name as one od the pre-defined api files...
+			then the class assigned will be changed to the custom class (phpbb__api_user above).
+
+*Other PHP source directories*
+
+/includes/acm/ - Cache System
+
+
+
+/inclused/db/
+
+/includes/classes/ - A collection of classes used now and then. Basically, they did not warrant their own directory.
+
+*Standard directories*
+
+/develop/ - Internal helper files for development. Only present in SVN
+/docs/ - Documentation, Documents, License file, Coding Guidelines
+
+/cache/ - Cache directory for storing files. Needs to be writeable		
+/store/ - Store directory for storing backup files and temporary files. Needs to be writeable
+/files/ - Files directory for storing attachments and uploaded files. Needs to be writeable
+
+*Style directories*
