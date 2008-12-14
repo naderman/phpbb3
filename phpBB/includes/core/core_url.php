@@ -1,14 +1,20 @@
 <?php
+if (!defined('IN_PHPBB'))
+{
+	exit();
+}
 // Server functions (building urls, redirecting...)
 class phpbb_url
 {
+	public $_instantiate = true;
+
 	public function __construct() { }
 
-	/*
+	/**
 	* Checks if a path ($path) is absolute or relative
 	*
 	* @param string $path Path to check absoluteness of
-	* @return boolean
+	* @return bool True if path is absolute
 	*/
 	function is_absolute($path)
 	{
@@ -349,8 +355,8 @@ class phpbb_url
 	*/
 	public function generate_board_url($without_script_path = false)
 	{
-		$server_name = phpbb::$user->server['host'];
-		$server_port = phpbb::$user->server['port'];
+		$server_name = phpbb::$user->system['host'];
+		$server_port = phpbb::$user->system['port'];
 
 		// Forcing server vars is the only way to specify/override the protocol
 		if ($config['force_server_vars'] || !$server_name)
