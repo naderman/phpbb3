@@ -46,10 +46,21 @@ class phpbb_user extends phpbb_session
 	/**
 	* Constructor to set the lang path
 	*/
-	public function __construct()
+	public function __construct($custom_lang_path = false)
 	{
 		parent::__construct();
-		$this->lang_path = PHPBB_ROOT_PATH . 'language/';
+
+		// Init auth object
+		$method = basename(trim(phpbb::$config['auth_method']));
+		$class = 'phpbb_auth_' . $method;
+
+		if (class_exists($class))
+		{
+			$this->auth = new $class();
+		}
+
+		// Set language path
+		$this->lang_path = ($custom_lang_path === false) ? PHPBB_ROOT_PATH . 'language/' : $this->set_custom_lang_path($custom_lang_path);
 	}
 
 	public function init($update_session_page = true)
@@ -850,7 +861,7 @@ class phpbb_user extends phpbb_session
 
 	public function login($username, $password, $autologin = false, $viewonline = 1, $admin = 0)
 	{
-		if (method_exists($this->auth, 'login'))
+		if ($this->auth !== false && method_exists($this->auth, 'login'))
 		{
 			$login = $this->auth->login($username, $password);
 
