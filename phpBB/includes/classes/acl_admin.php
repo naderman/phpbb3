@@ -20,7 +20,7 @@ if (!defined('IN_PHPBB'))
 * ACP Permission/Auth class
 * @package phpBB3
 */
-class phpbb_acl_admin extends acl
+class phpbb_acl_admin extends phpbb_acl
 {
 	function __construct() { parent::__construct(); }
 

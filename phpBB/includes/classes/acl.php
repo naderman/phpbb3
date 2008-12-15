@@ -514,6 +514,14 @@ class phpbb_acl
 		return;
 	}
 
+/**
+}
+
+ * Role-specific methods/definitionis used by phpbb_acl
+class phpbb_acl_role
+{
+ */
+
 	/**
 	* Get assigned roles
 	* @todo: protected or public?
@@ -546,6 +554,13 @@ class phpbb_acl
 		return $roles;
 	}
 
+/**
+}
+
+ * data-specific methods/definitionis used by phpbb_acl
+class phpbb_acl_data
+{
+ */
 	/**
 	* Get raw acl data based on user/option/forum
 	* @todo: protected or public?
