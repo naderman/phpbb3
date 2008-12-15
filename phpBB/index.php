@@ -26,6 +26,10 @@ phpbb::$user->setup('viewforum');
 
 echo phpbb::$user->system['path'];
 
+print_r(phpbb::$user->system['page']);
+
+exit;
+
 display_forums('', phpbb::$config['load_moderators']);
 
 // Set some stats, get posts count from forums data if we... hum... retrieve all forums data

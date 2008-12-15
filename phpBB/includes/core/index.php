@@ -139,28 +139,43 @@ phpbb::register('url');
 phpbb::register('system');
 
 // Now search for required core files...
-if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/'))
+if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/plugins/'))
 {
 	while (($file = readdir($dh)) !== false)
 	{
 		if (strpos($file, 'core_') === 0 && substr($file, -(strlen(PHP_EXT) + 1)) === '.' . PHP_EXT)
 		{
+			$plugin = false;
 			$name = substr($file, 5, -strlen(PHP_EXT) - 1);
-			$class_name = 'phpbb_core_' . $name;
+			$base_object = (strpos($file, '_') !== false) ? substr($file, 0, -(strpos($file, '_') - 1)) : $file;
 
-			require_once PHPBB_ROOT_PATH . 'includes/core/' . $file;
-			if (class_exists($class_name, false))
+			require_once PHPBB_ROOT_PATH . 'includes/core/plugins/' . $file;
+
+			if ($plugin === false)
 			{
-				echo $class_name::A; exit;
-				if (property_exists($class_name, 'phpbb_register'))
-				{
-					if (phpbb::registered($name))
-					{
-						phpbb::unregister($name);
-					}
+				continue;
+			}
 
-					phpbb::register($name, $class_name);
+			if (!is_array($plugin))
+			{
+				$plugin = array($plugin);
+			}
+
+			foreach ($plugin as $object)
+			{
+				if (!property_exists($object, 'phpbb_plugin'))
+				{
+					continue;
 				}
+
+				// Is the plugin the mod author wants to influence pluggable?
+				if (!is_subclass_of(phpbb::get_instance($object->phpbb_plugin), 'phpbb_plugin_support'))
+				{
+					continue;
+				}
+
+				// Register plugin...
+				$object->register_plugin(phpbb::get_instance($object->phpbb_plugin));
 			}
 		}
 	}

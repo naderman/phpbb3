@@ -13,6 +13,110 @@ if (!defined('IN_PHPBB'))
 	exit();
 }
 
+abstract class phpbb_plugin_support
+{
+	private $plugin_methods;
+	private $plugin_attributes;
+	private $plugin_append;
+	private $plugin_overload;
+
+	protected function plugin_overload($name)
+	{
+		return (!empty($this->plugin_overload[$name]));
+	}
+
+	protected function plugin_append($name)
+	{
+		return (!empty($this->plugin_append[$name]));
+	}
+
+	public function register_method($name, $callback)
+	{
+		if (method_exists($this, $name))
+		{
+			$this->plugin_overload[$name] = true;
+		}
+
+		if (isset($this->plugin_methods[$name]))
+		{
+			trigger_error('Method ' . $name . ' in class ' . get_class($callback) . ' is already defined in class ' . get_class($this->plugin_methods[$name]), E_USER_ERROR);
+		}
+
+		$this->plugin_methods[$name] = $callback;
+	}
+
+	public function register_attribute($name, $obj)
+	{
+		if (property_exists($this, $name))
+		{
+			unset($this->$name);
+		}
+
+		if (isset($this->plugin_attributes[$name]))
+		{
+			trigger_error('Attribute ' . $name . ' in class ' . get_class($obj) . ' already defined in class ' . get_class($this->plugin_attributes[$name]), E_USER_ERROR);
+		}
+
+		$this->plugin_attributes[$name] = $obj;
+	}
+
+	public function register_append($name, $obj)
+	{
+		if (!isset($this->plugin_append[$name]))
+		{
+			$this->plugin_append[$name] = array();
+		}
+
+		$this->plugin_append[$name][] = $obj;
+	}
+
+	public function plugin_append_call()
+	{
+		$args = func_get_args();
+		$name = array_shift($args);
+
+		$result = array_shift($args);
+		foreach ($this->plugin_append[$name] as $object)
+		{
+			$result = call_user_func_array(array($object, $name), array_merge(array($this, $result), $args));
+		}
+
+		return $result;
+	}
+
+	// Getter/Setter
+	public function __get($name)
+	{
+		return $this->plugin_attributes[$name]->$name;
+	}
+
+	public function __set($name, $value)
+	{
+		return $this->plugin_attributes[$name]->$name = $value;
+	}
+
+	public function __isset($name)
+	{
+		return isset($this->plugin_attributes[$name]->$name);
+	}
+
+	public function __unset($name)
+	{
+		unset($this->plugin_attributes[$name]->$name);
+	}
+
+	function __call($name, $arguments)
+	{
+		array_unshift($arguments, $this);
+		return call_user_func_array(array($this->plugin_methods[$name], $name), $arguments);
+	}
+}
+
+interface phpbb_plugin
+{
+	function register_plugin(phpbb_plugin_support $object);
+}
+
 /**
 * static phpBB class
 * @package core

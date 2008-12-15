@@ -7,7 +7,7 @@ if (!defined('IN_PHPBB'))
  * Get System variables.
  * @package phpBB3
  */
-class phpbb_system implements ArrayAccess
+class phpbb_system extends phpbb_plugin_support implements ArrayAccess
 {
 	private $data = array();
 
@@ -35,16 +35,16 @@ class phpbb_system implements ArrayAccess
 
 		$identifier = 'get_' . strtolower($offset);
 
-		if (!method_exists($this, $identifier))
+/*		if (!method_exists($this, $identifier))
 		{
 			trigger_error('Try to get unkown data from ' . $identifier, E_USER_ERROR);
-		}
+		}*/
 
 		// Not static, because we are not able to use late static bindings
 		$this->data[$offset] = $this->$identifier();
 		return $this->data[$offset];
 	}
-	
+
 	/**
 	* Get valid hostname/port. HTTP_HOST is used, SERVER_NAME if HTTP_HOST not present.
 	*/
@@ -101,6 +101,8 @@ class phpbb_system implements ArrayAccess
 	*/
 	protected function get_page()
 	{
+		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array());
+
 		$page_array = array();
 
 		// First of all, get the request uri...
@@ -193,7 +195,7 @@ class phpbb_system implements ArrayAccess
 			'forum'				=> request_var('f', 0),
 		);
 
-		return $page_array;
+		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $page_array) : $page_array;
 	}
 
 	protected function get_browser()
