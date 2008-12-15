@@ -151,7 +151,8 @@ if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/'))
 			require_once PHPBB_ROOT_PATH . 'includes/core/' . $file;
 			if (class_exists($class_name, false))
 			{
-				if (property_exists($class_name, '_instantiate'))
+				echo $class_name::A; exit;
+				if (property_exists($class_name, 'phpbb_register'))
 				{
 					if (phpbb::registered($name))
 					{

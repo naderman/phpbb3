@@ -6,7 +6,7 @@ if (!defined('IN_PHPBB'))
 
 class phpbb_api_user
 {
-	public $_instantiate = true;
+	public $phpbb_register = true;
 
 	public function __construct()
 	{

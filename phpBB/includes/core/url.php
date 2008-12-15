@@ -6,7 +6,7 @@ if (!defined('IN_PHPBB'))
 // Server functions (building urls, redirecting...)
 class phpbb_url
 {
-	public $_instantiate = true;
+	public $phpbb_register = true;
 
 	public function __construct() { }
 

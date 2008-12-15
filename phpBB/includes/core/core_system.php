@@ -6,7 +6,7 @@ if (!defined('IN_PHPBB'))
 
 class phpbb_core_system extends phpbb_system
 {
-	public $_instantiate = true;
+	public $phpbb_register = true;
 
 	/**
 	* Get PATH environment variable

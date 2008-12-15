@@ -5,18 +5,18 @@
 *Directories with special handling*
 
 /includes/core/ - Main Core files
-	index.php: This file is called from common.php and initializes the phpBB Core
-	core.php: Main file defining the phpbb:: superclass and the SPL autoload function
+	bootstrap.php: This file is called from common.php and initializes the phpBB Core
+	core.php: Main file defining the phpbb:: class and the SPL autoload function
 
 	Pre-defined core files:
 		These files consist of classes defining functions/methods used all over the main product.
 
-		Filename			Class Name					Static		Instatiated		Callable through
-		request.php			deactivated_super_global	No			No				*Private*
-							request						Yes			No				request::
-		security.php		phpbb_security				No			Yes				phpbb::$security
-		system.php			phpbb_system				No			Yes				get system host with phpbb::$user->system['host'], phpbb::call('system')->get_host() internally
-		url.php				phpbb_url					No			Yes				phpbb::$url
+		Filename		Class Name			Abstract		Assigned to phpbb::		Callable through
+		request.php		deactivated_super_global	No			No				*Private*
+					phpbb_request			Yes			No				request::
+		security.php		phpbb_security			No			Yes				phpbb::$security
+		system.php		phpbb_system			No			Yes				get system host with phpbb::$user->system['host'], phpbb::get('system')->get_host() internally
+		url.php			phpbb_url			No			Yes				phpbb::$url
 
 	Files prefixed with core_:
 		These files are custom files loaded after the main pre-defined core files. They have special rules and different names.
@@ -27,17 +27,17 @@
 			- The filename must match the class name used
 			- The class name must be prefixed with phpbb_core_
 			- A file called core_example.php defines a class phpbb_core_example
-			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb:: with it's name automatically
-			- The resulting object is callable with phpbb::call('example')
+			- If the class is supposed to be instantiated by default directly by phpBB then an attribute $phpbb_register must exist and set to true. phpbb::register() is called then.
+			- The resulting object is callable with phpbb::get('example')
 
 		Some examples with their cases:
 
-		Filename			Class Name					Static		Instatiated		Callable through
-		core_example.php	phpbb_core_example			No			No				*Private*
-		core_example.php	phpbb_core_example			No			Yes				phpbb::call('example')
-		core_example.php	phpbb_core_example			Yes			No				phpbb_core_example::
-		core_security.php	phpbb_core_security
-								extends phpbb_security	No			Yes				overwrites phpbb::$security
+		Filename			Class Name				Abstract		Assigned to phpbb::		Callable through
+		core_example.php		phpbb_core_example			No			No				*Private*
+		core_example.php		phpbb_core_example			No			Yes				phpbb::get('example')
+		core_example.php		phpbb_core_example			Yes			No				phpbb_core_example::
+		core_security.php		phpbb_core_security
+							extends phpbb_security		No			Yes				overwrites phpbb::$security
 
 		Important note:
 			If you haven't noticed, if there is a file and class with the same name as one pre-defined core file...
@@ -56,7 +56,7 @@
 			<?php
 				class phpbb_core_system extends phpbb_system
 				{
-					public $_instantiate = true;
+					public $phpbb_register = true;
 
 					/**
 					* Get PATH environment variable
@@ -78,8 +78,8 @@
 	Pre-defined API files:
 		These files consist of API classes used all over the main product.
 
-		Filename			Class Name					Static		Instatiated		Callable through
-		user.php			phpbb_api_user				No			Yes				phpbb::$api->$user->
+		Filename			Class Name		Abstract		Added to phpbb::$api		Callable through
+		user.php			phpbb_api_user		No			Yes				phpbb::$api->$user->
 
 	Files prefixed with api_:
 		These files consist of classes defining functions/methods used for the api.
@@ -89,21 +89,17 @@
 			- The filename must match the class name used
 			- The class name must be prefixed with phpbb__api_ (note the difference here is two __ instead of one _)
 			- A file called api_example.php defines a class phpbb__api_example
-			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb::$api with it's name automatically
-			- The resulting object is callable with phpbb::$api->$example->
+			- If the class has a public var named $phpbb_api_register then the class is instantiated as phpbb::$api->$example->
 
 		Some examples with their cases:
 
-		Filename			Class Name					Static		Instatiated		Callable through
+		Filename		Class Name				Abstract		Added to phpbb::$api		Callable through
 		api_example.php		phpbb__api_example			No			No				*Private*
 		api_example.php		phpbb__api_example			No			Yes				phpbb::$api->$example->
 		api_example.php		phpbb__api_example			Yes			No				phpbb__api_example::
 		api_user.php		phpbb__api_user
-								extends phpbb_api_user	No			Yes				overwrites phpbb::$api->$user
+						extends phpbb_api_user		No			Yes				overwrites phpbb::$api->$user
 
-		Important note:
-			If you haven't noticed, if there is a file and class with the same name as one od the pre-defined api files...
-			then the class assigned will be changed to the custom class (phpbb__api_user above).
 
 *Other PHP source directories*
 
@@ -203,7 +199,7 @@
 
 	Example:
 
-	Filename			Class Name				Filename in info/		Class name in info/
+	Filename		Class Name			Filename in info/		Class name in info/
 	ucp_main.php		phpbb_ucp_main			ucp_main.php			phpbb_ucp_main_info
 
 	Info Layout (Abstract):

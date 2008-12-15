@@ -18,7 +18,6 @@ if (!defined('IN_PHPBB'))
 
 /**
 * Class for obtaining cached entries, for example censor word list, configuration...
-* --Static Class--
 *
 * @package acm
 */

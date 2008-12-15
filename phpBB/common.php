@@ -119,7 +119,7 @@ phpbb::register('target_db', 'phpbb_dbal_' . basename($dbms), false, 'test', 'te
 echo ";".phpbb::$instances['target_db']->sql_layer.";";
 
 // The same call as above - but a little bit easier through array access (we could also do a shortcut, for example i instead of call)
-echo ";".phpbb::call('target_db')->sql_layer.";";
+echo ";".phpbb::get('target_db')->sql_layer.";";
 
 exit;
 */

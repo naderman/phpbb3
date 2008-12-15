@@ -32,7 +32,7 @@ class phpbb_api
 
 					if (class_exists($class_name, false))
 					{
-						if (property_exists($class_name, '_instantiate'))
+						if (property_exists($class_name, 'phpbb_api_register'))
 						{
 							$this->$name = new $class_name();
 						}

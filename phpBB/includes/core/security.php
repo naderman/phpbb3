@@ -11,7 +11,7 @@ class phpbb_security
 	/**
 	 * @var bool Let this class being instantiated within the core
 	 */
-	public $_instantiate = true;
+	public $phpbb_register = true;
 
 	/**
 	 * Used Hash type.
@@ -19,7 +19,7 @@ class phpbb_security
 	public $hash_type = '$H$';
 
 	/**
-	 * @var bool 
+	 * @var bool
 	 */
 	private $dss_seeded = false;
 

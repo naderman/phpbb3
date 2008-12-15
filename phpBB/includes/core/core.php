@@ -61,7 +61,7 @@ class phpbb
 	* @param string $variable The name of the object to retrieve.
 	* @return mixed The object registered with this name
 	*/
-	public static function &get_instance($variable)
+	public static function get_instance($variable)
 	{
 		if (!self::registered($variable))
 		{
@@ -101,7 +101,7 @@ class phpbb
 	*
 	* @param string $variable The objects name which got self-registered.
 	*/
-	public static function &call($variable)
+	public static function get($variable)
 	{
 		// No error checking done here... returned right away
 		return self::$instances[$variable];
