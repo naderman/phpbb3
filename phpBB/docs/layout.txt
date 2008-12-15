@@ -6,7 +6,7 @@
 
 /includes/core/ - Main Core files
 	index.php: This file is called from common.php and initializes the phpBB Core
-	core.php: Main file defining the phpbb:: superclass and the SPL autoload function 
+	core.php: Main file defining the phpbb:: superclass and the SPL autoload function
 
 	Pre-defined core files:
 		These files consist of classes defining functions/methods used all over the main product.
@@ -19,44 +19,45 @@
 		url.php				phpbb_url					No			Yes				phpbb::$url
 
 	Files prefixed with core_:
-		These files are custom files loaded after the main pre-defined core files. They have special rules and different names. Developers can extend from the core classes.
-		
+		These files are custom files loaded after the main pre-defined core files. They have special rules and different names.
+		Developers can extend from the core classes.
+
 		Naming schema:
 			- Prefix files with core_
 			- The filename must match the class name used
 			- The class name must be prefixed with phpbb_core_
 			- A file called core_example.php defines a class phpbb_core_example
-			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb:: by it's name automatically
+			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb:: with it's name automatically
 			- The resulting object is callable with phpbb::call('example')
 
 		Some examples with their cases:
-		
+
 		Filename			Class Name					Static		Instatiated		Callable through
 		core_example.php	phpbb_core_example			No			No				*Private*
 		core_example.php	phpbb_core_example			No			Yes				phpbb::call('example')
 		core_example.php	phpbb_core_example			Yes			No				phpbb_core_example::
 		core_security.php	phpbb_core_security
 								extends phpbb_security	No			Yes				overwrites phpbb::$security
-		
+
 		Important note:
 			If you haven't noticed, if there is a file and class with the same name as one pre-defined core file...
 			then the class assigned will be changed to the custom class (phpbb_core_security above).
 
 			This works for:
 			security, system, url
-			
+
 			Example use-case:
-			
+
 			- You want to get additional system variables for your application, for example the PATH environment variable.
 			- Drop in a file: /includes/core/core_system.php
 			- The file contents should look like:
-			
+
 			[code]
 			<?php
 				class phpbb_core_system extends phpbb_system
 				{
 					public $_instantiate = true;
-					
+
 					/**
 					* Get PATH environment variable
 					*/
@@ -68,32 +69,31 @@
 				}
 			?>
 			[/code]
-			
+
 			- access your PATH environment variable through phpbb::$user->system['path'];
-			
-			
 
 /includes/api/ - API Files
-	index.php: This file is called by /includes/core/index.php to initialize the basic phpBB API, callable through phpbb::API::
-	
-	Pre-defined core files:
-		These files consist of classes defining functions/methods used all over the main product.
+	index.php: This file is called by /includes/core/index.php to initialize the basic phpBB API, callable through phpbb::$api->
+
+	Pre-defined API files:
+		These files consist of API classes used all over the main product.
 
 		Filename			Class Name					Static		Instatiated		Callable through
 		user.php			phpbb_api_user				No			Yes				phpbb::$api->$user->
 
 	Files prefixed with api_:
 		These files consist of classes defining functions/methods used for the api.
+
 		Naming schema:
 			- Prefix files with api_
 			- The filename must match the class name used
 			- The class name must be prefixed with phpbb__api_ (note the difference here is two __ instead of one _)
 			- A file called api_example.php defines a class phpbb__api_example
 			- If the class is non-static and has a public var named _instantiate then the class is registered within phpbb::$api with it's name automatically
-			- The resulting object is callable with phpbb::$api->$example
-		
+			- The resulting object is callable with phpbb::$api->$example->
+
 		Some examples with their cases:
-		
+
 		Filename			Class Name					Static		Instatiated		Callable through
 		api_example.php		phpbb__api_example			No			No				*Private*
 		api_example.php		phpbb__api_example			No			Yes				phpbb::$api->$example->
@@ -107,21 +107,166 @@
 
 *Other PHP source directories*
 
+/includes:
+
+	constants.php: File defining system-wide constants.
+	functions.php: File defining standard functions used everywhere.
+	functions_admin.php: File defining standard admin functions, available within the ACP
+
 /includes/acm/ - Cache System
-
-
-
-/inclused/db/
+/includes/auth/ - Authentication System
+/includes/bbcode/ - BBCode System
+/includes/captcha/ - BBCode System
+/includes/db/ - DBAL
+/includes/diff/ - Diff Engine
+/includes/hooks/ - Hook System
+/includes/search/ - Search System
+/includes/utf/ - UTF8-specific files/classes
 
 /includes/classes/ - A collection of classes used now and then. Basically, they did not warrant their own directory.
+	template.php, template_compile.php: The template engine
+
+		The template engine is available through phpbb::$template. The required file is template.php, the class name is phpbb_template.
+		The template_compile.php file consist of the template compiler only called if needed within template.php. There is no need to call or include this file directly.
+
+	session.php: The session class used for managing sessions.
+
+		Session.php defines the class phpbb_session. This class is not directly used. The user class (see user.php) extends the session.
+		Within the session object an authentication plugin is able to be used. It only will be initialized for a valid user object (see user.php).
+
+	user.php: The user object, handling user-based session and user-specific setups. It defines the users workspace.
+
+		The user object is available through phpbb::$user.
+		The phpbb_user class extends the phpbb_session class from session.php.
+		Within the user object the authentication plugin is initialized. It is located within the constructor and looks like this:
+
+		[code]
+		// Init auth object
+		$method = basename(trim(phpbb::$config['auth_method']));
+		$class = 'phpbb_auth_' . $method;
+
+		if (class_exists($class))
+		{
+			$this->auth = new $class();
+		}
+		[/code]
+
+		Authentication realms can then be accessed by ->auth->function(). Generally developers should check for a valid object and if the method exists before using it.
+		The auth object is initialized within the user class, because authentication plugins directly relate to valid users, although they mostly define methods for user session handling.
+
+	cache.php: Static class for obtaining cached items/arrays
+
+		The cache.php file defines a static class named phpbb_cache. It is used to obtain standard arrays, like the configuration, attachment extensions, word censor, etc.
+		A sample call would be: $data = phpbb_cache::obtain_config();
+
+	acl.php: ACL/permission class.
+
+		The ACL object is available through phpbb::$acl.
+		acl.php defines several classes:
+
+		Public:
+		phpbb_acl is the main class holding methods to get permissions.
+
+		Internal:
+		phpbb_acl_role holds/sets and gets role-specific permission data for internal use.
+		phpbb_acl_data holds/sets and gets raw permission data for internal use.
+
+	acl_admin.php: ACL/Permission admin class.
+
+		The ACL object is available through phpbb::$acl within the ACP.
+
+		Public:
+		phpbb_acl_admin is the main class holding methods to set/remove permissions. This class is extended from phpbb_acl defined in acl.php.
+
+		Internal:
+		(mask)
+
+*Special directories*
+
+/plugins (is /modules better? At the moment it describes them better): Directory holding directories/files for the defined module sections.
+
+	ucp/: The user control panel.
+	ucp/info/: Information Files for the user control panel.
+
+	mcp/: The moderator control panel.
+	mcp/info/: Information Files for the user control panel.
+
+	acp/: The administration control panel.
+	acp/info/: Information Files for the administration control panel.
+
+	*Common Instructions*
+
+	A directory defines a common collection of modules. The module must have a unique name, all lowercase and only contain characters from a-z.
+	Every file within the directory must be prefixed by the modules name, for example ucp_filename.php for files within the directory ucp and defining a class with the same name, prefixed with phpbb_
+	Every such prefixed file is not able to be called standalone, but only defines a module.
+	The file calling the modules and being responsible for the setup is called exactly like the directory name, for example ucp.php for the ucp directory.
+
+	Example:
+
+	Filename			Class Name				Filename in info/		Class name in info/
+	ucp_main.php		phpbb_ucp_main			ucp_main.php			phpbb_ucp_main_info
+
+	Info Layout (Abstract):
+
+	phpbb_ucp_main_info uses phpbb_module_info
+
+	function module(): Defines the modules general informaton, permissions and layout
+	function install(): Defines installation routines
+	function uninstall(): Defines uninstallation routines
+
+	Within the info/ directory there must be one file called bootstrap.php, defining the main layout of the whole module:
+
+	phpbb_ucp_info
+
+	function module(): Defines standard module behaviour and visibility. For example the number of levels for the menu layout and template location (the ACP for example does not use the styles directory, but a custom one)
+	function install(): Installation of the whole module
+	function uninstall(): Uninstallation of the whole module
+
+	*Additional classes*
+
+	A main module file usually defines several sections for the menu used or the main module used. To be able to separate several functionalities there is a way to define more classes connected to the main module.
+
+
 
 *Standard directories*
 
 /develop/ - Internal helper files for development. Only present in SVN
 /docs/ - Documentation, Documents, License file, Coding Guidelines
 
-/cache/ - Cache directory for storing files. Needs to be writeable		
+/cache/ - Cache directory for storing files. Needs to be writeable
 /store/ - Store directory for storing backup files and temporary files. Needs to be writeable
 /files/ - Files directory for storing attachments and uploaded files. Needs to be writeable
 
-*Style directories*
+*Standard Files*
+
+/common.php: Main file to be always included.
+/cron.php: The CRON script
+/style.php: Responsible for CSS style output
+
+/index.php: The front page
+/view.php: View Syndicator, for accessing "states" (viewforum, viewtopic, search, posting) - rewrite_url(!)
+/module.php: View Syndicator, for accessing modules (ucp, mcp) - rewrite_url(!)
+
+If view/module.php is not used: memberlist.php, posting.php, report.php, search.php, ucp.php, viewforum.php, viewonline.php, viewtopic.php
+
+*Template directory layout*
+
+The following describes the main template layout of a style. Templates are organised in logical groups, presented by directories.
+
+There are some pre-defined locations set up for templates which are searched and included automatically (but can be overridden):
+
+For every module defined within the /plugins (/modules?) directory, there is one directory within the template, for example:
+ucp/ for the user control panel located in /plugins/ucp/
+
+Other pre-defined logical directories:
+	includes/: Template files included by other files (overall_header, overall_footer, simple_header, jumpbox)
+	auth/: Authentication related files (login_body, login_forum)
+	error/:	error templates (SQL Error, Backtrace, etc)
+	notify/: Notification boxes, confirm boxes, etc.
+
+	captcha/: Captcha relevant template files
+	forum/: Forum view relevant files
+	topic/: Topic view relevant files
+	posting/: Posting relevant files
+	memberlist/: Memberlist relevant files
+	search/: Files for teh search plugins
