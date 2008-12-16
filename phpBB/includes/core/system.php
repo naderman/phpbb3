@@ -1,8 +1,20 @@
 <?php
+/**
+*
+* @package core
+* @version $Id: core.php 9200 2008-12-15 18:06:53Z acydburn $
+* @copyright (c) 2008 phpBB Group
+* @license http://opensource.org/licenses/gpl-license.php GNU Public License
+*
+*/
+
+/**
+*/
 if (!defined('IN_PHPBB'))
 {
 	exit();
 }
+
 /**
  * Get System variables.
  * @package phpBB3

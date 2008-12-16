@@ -3,7 +3,7 @@
 *
 * @package core
 * @version $Id$
-* @copyright (c) 2005 phpBB Group
+* @copyright (c) 2008 phpBB Group
 * @license http://opensource.org/licenses/gpl-license.php GNU Public License
 *
 * Within this file only the framework with all components but no phpBB-specific things will be loaded
