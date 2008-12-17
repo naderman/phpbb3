@@ -141,6 +141,17 @@ class phpbb
 	public static $config = array();
 	/**#@-*/
 
+	// ACL
+	const ACL_NEVER = 0;
+	const ACL_YES = 1;
+	const ACL_NO = -1;
+
+	// phpbb_chmod() permissions
+	const CHMOD_ALL = 7;
+	const CHMOD_READ = 4;
+	const CHMOD_WRITE = 2;
+	const CHMOD_EXECUTE = 1;
+
 	/**
 	* A static array holding custom objects
 	*/
@@ -299,6 +310,7 @@ function __phpbb_autoload($class_name)
 	$class_name = basename($class_name);
 
 	$filenames = array(
+		'includes/' . $class_name . '/bootstrap',
 		'includes/' . $class_name . '/index',
 		'includes/classes/' . $class_name,
 		'includes/' . $class_name,

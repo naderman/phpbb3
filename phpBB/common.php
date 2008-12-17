@@ -19,7 +19,7 @@ if (!defined('IN_PHPBB'))
 }
 
 // Init Framework
-require_once PHPBB_ROOT_PATH . 'includes/core/index.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'includes/core/bootstrap.' . PHP_EXT;
 
 // Run through remaining Framework states
 if (PHPBB_FRAMEWORK_FULL)

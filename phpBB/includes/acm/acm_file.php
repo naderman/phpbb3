@@ -72,7 +72,7 @@ class phpbb_acm_file extends phpbb_acm_abstract
 				include(PHPBB_ROOT_PATH . 'includes/functions.' . PHP_EXT);
 			}
 
-			phpbb_chmod($filename, CHMOD_WRITE);
+			phpbb_chmod($filename, phpbb::CHMOD_WRITE);
 		}
 
 		return $data;
@@ -117,7 +117,7 @@ class phpbb_acm_file extends phpbb_acm_abstract
 				include(PHPBB_ROOT_PATH . 'includes/functions.' . PHP_EXT);
 			}
 
-			phpbb_chmod($filename, CHMOD_WRITE);
+			phpbb_chmod($filename, phpbb::CHMOD_WRITE);
 		}
 		else
 		{

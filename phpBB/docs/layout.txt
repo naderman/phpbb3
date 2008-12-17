@@ -1,4 +1,83 @@
 /**
+* General development pardigm used
+*/
+
+Our important "global" objects are realized through singletons (objects initialized once). To overcome the need for globals all objects are referenced through the abstract phpbb.
+Instead of doing dependency injection we only check for the presence of required objects within the objects constructor. Additionally every object defined a public var $phpbb_required and $phpbb_optional, listing the objects needed. This allows us to do proper unit tests.
+The unit test writer itself is able to do two things. (1) directly grabs the dependencies of the object and therefore instantly knows what is expected and (2) able to instatiate them on his own through phpbb::register/unregister.
+If an object is needed which is not referenced through phpbb:: then the constructor will ask for it. This way we overcome problems with dependencies and order of calls.
+
+/**
+* REGISTER order
+*/
+
+/core/phpbb/
+/core/request/
+/core/security/
+/core/url/
+/core/system/
+/core/plugins/*
+-> message handler assigned
+-> super globals disabled
+/db/dbal/
+/acm/
+	-> /classes/cache/
+-> config obtained
+/template/
+/acl/
+/user/
+	-> /classes/session/
+/api/
+
+/**
+* REFERENCES
+* Simple Layout of all references and collaborators... dependency building
+* The classes are displayed as a path to identify it's location, meaning and use.
+*/
+
+/core/phpbb (The abstract phpbb will be our Application Builder later too)
+	Required: include:constants, include:functions, include:functions_content, include:utf8_tools
+
+/core/request
+/core/security extends phpbb_plugin_support
+	Required:	config, user (only the link hashing and form token generation require this)
+
+/core/url extends phpbb_plugin_support
+	Required:	user, config
+	Optional:	template If this is missing, then meta_refresh redirects directly
+
+/core/system extends phpbb_plugin_support
+	Required:	config, url
+
+/db/dbal (Our database abstraction layer)
+	Required:	config
+
+	Optional:	acm (If this is missing then sql queries are not cached)
+			user (If this is missing then english-only messages are displayed
+			acl (If this is missing then an SQL Query is not displayed fully if not in installation or debug_extra defined)
+
+/acm/
+
+/classes/cache/
+	Required:	config, acm, db
+
+/classes/template/
+	Required:	user, config
+
+/classes/acl/
+	Required:	acm, db
+
+/classes/user/
+	Required:	config, acl, db, template, security, system, acm, api->user
+
+/classes/session/
+	Required:	system, config, security
+	Optional:	db
+
+/classes/api/
+
+
+/**
 * Directory/File layout
 */
 
@@ -6,10 +85,14 @@
 
 /includes/core/ - Main Core files
 	bootstrap.php: This file is called from common.php and initializes the phpBB Core
-	core.php: Main file defining the phpbb:: class and the SPL autoload function
+	core.php: Main file defining:
+		phpbb abstract
+		phpbb_plugin_support abstract
+		phpbb_plugin interface
+		SPL autoload function
 
 	Pre-defined core files:
-		These files consist of classes defining functions/methods used all over the main product.
+		These files consist of classes used all over the main product.
 
 		Filename		Class Name			Abstract		Assigned to phpbb::		Callable through
 		request.php		deactivated_super_global	No			No				*Private*
@@ -18,35 +101,40 @@
 		system.php		phpbb_system			No			Yes				get system host with phpbb::$user->system['host'], phpbb::get('system')->get_host() internally
 		url.php			phpbb_url			No			Yes				phpbb::$url
 
-	Files prefixed with core_:
+	Files residing in the subdirectory plugins/ and prefixed with core_:
 		These files are custom files loaded after the main pre-defined core files. They have special rules and different names.
-		Developers can extend from the core classes.
+		They allow for registering own objects defined, allow to plug in to core classes as well as overriding core class methods (only if the relevant methods support this)
 
 		Naming schema:
 			- Prefix files with core_
-			- The filename must match the class name used
+			- The filename should match the class name used
 			- The class name must be prefixed with phpbb_core_
 			- A file called core_example.php defines a class phpbb_core_example
-			- If the class is supposed to be instantiated by default directly by phpBB then an attribute $phpbb_register must exist and set to true. phpbb::register() is called then.
-			- The resulting object is callable with phpbb::get('example')
+			- A file called core_system_mymod.php defines a class phpbb_core_system_mymod with the intention to plug into phpbb_system
 
-		Some examples with their cases:
+		Using the plugin methods:
 
-		Filename			Class Name				Abstract		Assigned to phpbb::		Callable through
-		core_example.php		phpbb_core_example			No			No				*Private*
-		core_example.php		phpbb_core_example			No			Yes				phpbb::get('example')
-		core_example.php		phpbb_core_example			Yes			No				phpbb_core_example::
-		core_security.php		phpbb_core_security
-							extends phpbb_security		No			Yes				overwrites phpbb::$security
+		A class defined in plugins is able to plug into the core files, defining additional methods, attributes or overriding methods and attributes.
 
-		Important note:
-			If you haven't noticed, if there is a file and class with the same name as one pre-defined core file...
-			then the class assigned will be changed to the custom class (phpbb_core_security above).
+		- It is always possible to define new methods
+		- It is always possible to define new attributes
+		- It is always possible to override public attributes
+		- Overriding methods is only possible for methods supporting this
+		- Calling code at the end of a method is only possible for methods supporting this
+		- It is not possible to override private or protected methods
+		- It is not possible to override private or protected methods
 
-			This works for:
-			security, system, url
+		Pluggable core files/methods:
 
-			Example use-case:
+			File		Class			Object				Methods (Override)	Methods (Plug code to the end)
+			security.php	phpbb_security		phpbb::$security		gen_rand_string()	gen_rand_string()
+												unique_id()		unique_id()
+			system.php	phpbb_system		phpbb::$system
+
+
+		Example use-case:
+
+			yadda yadda... not finished yet... need to eat... and sleep...
 
 			- You want to get additional system variables for your application, for example the PATH environment variable.
 			- Drop in a file: /includes/core/core_system.php

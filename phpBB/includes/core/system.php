@@ -22,6 +22,7 @@ if (!defined('IN_PHPBB'))
 class phpbb_system extends phpbb_plugin_support implements ArrayAccess
 {
 	private $data = array();
+	public $phpbb_required = array('config', 'url');
 
 	public function offsetSet($offset, $value)
 	{

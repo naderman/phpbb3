@@ -18,10 +18,8 @@ if (!defined('IN_PHPBB'))
 */
 class phpbb_security extends phpbb_plugin_support
 {
-	/**
-	 * @var bool Let this class being instantiated within the core
-	 */
-	public $phpbb_register = true;
+	public $phpbb_required = array('config', 'user');
+	public $phpbb_optional = array();
 
 	/**
 	 * Used Hash type.

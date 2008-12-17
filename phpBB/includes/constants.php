@@ -52,11 +52,6 @@ define('INACTIVE_PROFILE', 2);
 define('INACTIVE_MANUAL', 3);
 define('INACTIVE_REMIND', 4);
 
-// ACL
-define('ACL_NEVER', 0);
-define('ACL_YES', 1);
-define('ACL_NO', -1);
-
 // Login error codes
 define('LOGIN_CONTINUE', 1);
 define('LOGIN_BREAK', 2);
@@ -178,12 +173,6 @@ define('FIELD_DATE', 6);
 define('REFERER_VALIDATE_NONE', 0);
 define('REFERER_VALIDATE_HOST', 1);
 define('REFERER_VALIDATE_PATH', 2);
-
-// phpbb_chmod() permissions
-@define('CHMOD_ALL', 7);
-@define('CHMOD_READ', 4);
-@define('CHMOD_WRITE', 2);
-@define('CHMOD_EXECUTE', 1);
 
 // Additional constants
 define('VOTE_CONVERTED', 127);

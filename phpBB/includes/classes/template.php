@@ -22,6 +22,9 @@ if (!defined('IN_PHPBB'))
 */
 class phpbb_template
 {
+	public $phpbb_required = array('user', 'config');
+	public $phpbb_optional = array();
+
 	/**
 	* variable that holds all the data we'll be substituting into
 	* the compiled templates. Takes form:

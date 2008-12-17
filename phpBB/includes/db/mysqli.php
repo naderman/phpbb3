@@ -156,7 +156,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 
 			$this->query_result = false;
 
-			if ($cache_ttl && phpbb::$acm->supported('sql'))
+			if ($cache_ttl)
 			{
 				$this->get_sql_cache($query);
 			}
@@ -175,7 +175,7 @@ class phpbb_dbal_mysqli extends phpbb_dbal
 					$this->sql_report('stop', $query);
 				}
 
-				if ($cache_ttl && phpbb::$acm->supported('sql'))
+				if ($cache_ttl)
 				{
 					$this->put_sql_cache($query, $cache_ttl);
 				}

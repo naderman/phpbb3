@@ -93,8 +93,6 @@ class phpbb_template_filter extends php_user_filter
 
 	private function replace($matches)
 	{
-		global $config;
-
 		if (isset($matches[3]))
 		{
 			return $this->compile_var_tags($matches[0]);
@@ -146,15 +144,15 @@ class phpbb_template_filter extends php_user_filter
 			break;
 
 			case 'INCLUDEPHP':
-				return ($config['tpl_allow_php']) ? '<?php ' . $this->compile_tag_include_php($matches[2]) . ' ?>' : '';
+				return (phpbb::$config['tpl_allow_php']) ? '<?php ' . $this->compile_tag_include_php($matches[2]) . ' ?>' : '';
 			break;
 
 			case 'PHP':
-				return ($config['tpl_allow_php']) ? '<?php ' : '<!-- ';
+				return (phpbb::$config['tpl_allow_php']) ? '<?php ' : '<!-- ';
 			break;
 
 			case 'ENDPHP':
-				return ($config['tpl_allow_php']) ? ' ?>' : ' -->';
+				return (phpbb::$config['tpl_allow_php']) ? ' ?>' : ' -->';
 			break;
 
 			default:
@@ -833,7 +831,7 @@ class phpbb_template_compile
 		@flock($destination_handle, LOCK_UN);
 		@fclose($destination_handle);
 
-		phpbb_chmod($filename, CHMOD_WRITE);
+		phpbb_chmod($filename, phpbb::CHMOD_WRITE);
 
 		clearstatcache();
 

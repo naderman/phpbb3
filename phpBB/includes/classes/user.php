@@ -26,6 +26,9 @@ if (!defined('IN_PHPBB'))
 */
 class phpbb_user extends phpbb_session
 {
+	public $phpbb_required = array('config', 'acl', 'db', 'template', 'security', 'system', 'acm', 'api:user');
+	public $phpbb_optional = array();
+
 	public $lang = array();
 	public $help = array();
 	public $theme = array();
@@ -152,13 +155,10 @@ class phpbb_user extends phpbb_session
 		$this->add_lang($lang_set);
 		unset($lang_set);
 
-		if (request::variable('style', false, false, request::GET) && phpbb::$auth->acl_get('a_styles'))
+		if (request::variable('style', false, false, request::GET) && phpbb::$acl->acl_get('a_styles'))
 		{
-			global $SID, $_EXTRA_URL;
-
 			$style = request_var('style', 0);
-			$SID .= '&amp;style=' . $style;
-			$_EXTRA_URL = array('style=' . $style);
+			$this->extra_url = array('style=' . $style);
 		}
 		else
 		{
@@ -374,7 +374,7 @@ class phpbb_user extends phpbb_session
 		if (!defined('DEBUG_EXTRA') && !defined('ADMIN_START') && !defined('IN_INSTALL') && !defined('IN_LOGIN') && file_exists(PHPBB_ROOT_PATH . 'install'))
 		{
 			// Adjust the message slightly according to the permissions
-			if (phpbb::$auth->acl_gets('a_', 'm_') || phpbb::$auth->acl_getf_global('m_'))
+			if (phpbb::$acl->acl_gets('a_', 'm_') || phpbb::$acl->acl_getf_global('m_'))
 			{
 				$message = 'REMOVE_INSTALL';
 			}
@@ -386,7 +386,7 @@ class phpbb_user extends phpbb_session
 		}
 
 		// Is board disabled and user not an admin or moderator?
-		if (phpbb::$config['board_disable'] && !defined('IN_LOGIN') && !phpbb::$auth->acl_gets('a_', 'm_') && !phpbb::$auth->acl_getf_global('m_'))
+		if (phpbb::$config['board_disable'] && !defined('IN_LOGIN') && !phpbb::$acl->acl_gets('a_', 'm_') && !phpbb::$acl->acl_getf_global('m_'))
 		{
 			header('HTTP/1.1 503 Service Unavailable');
 
@@ -402,7 +402,7 @@ class phpbb_user extends phpbb_session
 				// Set board disabled to true to let the admins/mods get the proper notification
 				phpbb::$config['board_disable'] = '1';
 
-				if (!phpbb::$auth->acl_gets('a_', 'm_') && !phpbb::$auth->acl_getf_global('m_'))
+				if (!phpbb::$acl->acl_gets('a_', 'm_') && !phpbb::$acl->acl_getf_global('m_'))
 				{
 					header('HTTP/1.1 503 Service Unavailable');
 					trigger_error('BOARD_UNAVAILABLE');
@@ -416,7 +416,7 @@ class phpbb_user extends phpbb_session
 			if (!$this->data['session_viewonline'])
 			{
 				// Reset online status if not allowed to hide the session...
-				if (!phpbb::$auth->acl_get('u_hideonline'))
+				if (!phpbb::$acl->acl_get('u_hideonline'))
 				{
 					$sql = 'UPDATE ' . SESSIONS_TABLE . '
 						SET session_viewonline = 1
@@ -428,7 +428,7 @@ class phpbb_user extends phpbb_session
 			else if (!$this->data['user_allow_viewonline'])
 			{
 				// the user wants to hide and is allowed to  -> cloaking device on.
-				if (phpbb::$auth->acl_get('u_hideonline'))
+				if (phpbb::$acl->acl_get('u_hideonline'))
 				{
 					$sql = 'UPDATE ' . SESSIONS_TABLE . '
 						SET session_viewonline = 0
@@ -442,7 +442,7 @@ class phpbb_user extends phpbb_session
 
 		// Does the user need to change their password? If so, redirect to the
 		// ucp profile reg_details page ... of course do not redirect if we're already in the ucp
-		if (!defined('IN_ADMIN') && !defined('ADMIN_START') && phpbb::$config['chg_passforce'] && $this->data['is_registered'] && phpbb::$auth->acl_get('u_chgpasswd') && $this->data['user_passchg'] < time() - (phpbb::$config['chg_passforce'] * 86400))
+		if (!defined('IN_ADMIN') && !defined('ADMIN_START') && phpbb::$config['chg_passforce'] && $this->data['is_registered'] && phpbb::$acl->acl_get('u_chgpasswd') && $this->data['user_passchg'] < time() - (phpbb::$config['chg_passforce'] * 86400))
 		{
 			if (strpos($this->page['query_string'], 'mode=reg_details') === false && $this->page['page_name'] != 'ucp.' . PHP_EXT)
 			{
@@ -900,15 +900,12 @@ class phpbb_user extends phpbb_session
 
 				if ($admin)
 				{
-					global $SID, $_SID;
-
 					$cookie_expire = time() - 31536000;
 					$this->set_cookie('u', '', $cookie_expire);
 					$this->set_cookie('sid', '', $cookie_expire);
 					unset($cookie_expire);
 
-					$SID = '?sid=';
-					$this->session_id = $_SID = '';
+					$this->session_id = '';
 				}
 
 				$result = $this->session_create($login['user_row']['user_id'], $admin, $autologin, $viewonline);

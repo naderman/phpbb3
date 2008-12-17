@@ -85,6 +85,9 @@ class phpbb_dbal
 	protected $cache_rowset = array();
 	protected $cache_index = 0;
 
+	public $phpbb_required = array('config');
+	public $phpbb_optional = array('acm', 'user', 'acl');
+
 	/**
 	* Constructor
 	*/
@@ -596,6 +599,11 @@ class phpbb_dbal
 	*/
 	public function get_sql_cache($query)
 	{
+		if (!phpbb::registered('acm') || !phpbb::$acm->supported('sql'))
+		{
+			return false;
+		}
+
 		// Remove extra spaces and tabs
 		$var_name = preg_replace('/[\n\r\s\t]+/', ' ', $query);
 		$var_name = md5($this->sql_layer . '_' . $var_name);
@@ -606,7 +614,11 @@ class phpbb_dbal
 		{
 			$this->query_result = ++$this->cache_index;
 			$this->cache_rowset[$this->query_result] = $data['rowset'];
+
+			return true;
 		}
+
+		return false;
 	}
 
 	/**
@@ -617,6 +629,11 @@ class phpbb_dbal
 	*/
 	public function put_sql_cache($query, $cache_ttl)
 	{
+		if (!phpbb::registered('acm') || !phpbb::$acm->supported('sql'))
+		{
+			return false;
+		}
+
 		// Prepare the data
 		$var_name = preg_replace('/[\n\r\s\t]+/', ' ', $query);
 		$var_name = md5($this->sql_layer . '_' . $var_name);
@@ -637,6 +654,8 @@ class phpbb_dbal
 		$this->query_result = ++$this->cache_index;
 		$this->cache_rowset[$this->query_result] = $data['rowset'];
 		@reset($this->cache_rowset[$this->query_result]);
+
+		return true;
 	}
 
 	/**
@@ -654,8 +673,6 @@ class phpbb_dbal
 	*/
 	public function sql_error($sql = '')
 	{
-		global $auth, $user, $config;
-
 		// Set var to retrieve errored status
 		$this->sql_error_triggered = true;
 		$this->sql_error_sql = $sql;
@@ -669,32 +686,28 @@ class phpbb_dbal
 			// Show complete SQL error and path to administrators only
 			// Additionally show complete error on installation or if extended debug mode is enabled
 			// The DEBUG_EXTRA constant is for development only!
-			if ((isset($auth) && $auth->acl_get('a_')) || defined('IN_INSTALL') || defined('DEBUG_EXTRA'))
+			if ((phpbb::registered('acl') && phpbb::$acl->acl_get('a_')) || defined('IN_INSTALL') || defined('DEBUG_EXTRA'))
 			{
-				// Print out a nice backtrace...
-//				$backtrace = get_backtrace();
-
 				$message .= ($sql) ? '<br /><br />SQL<br /><br />' . htmlspecialchars($sql) : '';
-//				$message .= ($backtrace) ? '<br /><br />BACKTRACE<br />' . $backtrace : '';
 				$message .= '<br />';
 			}
 			else
 			{
 				// If error occurs in initiating the session we need to use a pre-defined language string
 				// This could happen if the connection could not be established for example (then we are not able to grab the default language)
-				if (!isset($user->lang['SQL_ERROR_OCCURRED']))
+				if (!phpbb::registered('user'))
 				{
 					$message .= '<br /><br />An sql error occurred while fetching this page. Please contact an administrator if this problem persists.';
 				}
 				else
 				{
-					if (!empty($config['board_contact']))
+					if (!empty(phpbb::$config['board_contact']))
 					{
-						$message .= '<br /><br />' . sprintf($user->lang['SQL_ERROR_OCCURRED'], '<a href="mailto:' . htmlspecialchars($config['board_contact']) . '">', '</a>');
+						$message .= '<br /><br />' . phpbb::$user->lang('SQL_ERROR_OCCURRED', '<a href="mailto:' . htmlspecialchars(phpbb::$config['board_contact']) . '">', '</a>');
 					}
 					else
 					{
-						$message .= '<br /><br />' . sprintf($user->lang['SQL_ERROR_OCCURRED'], '', '');
+						$message .= '<br /><br />' . phpbb::$user->lang('SQL_ERROR_OCCURRED', '', '');
 					}
 				}
 			}
@@ -729,7 +742,7 @@ class phpbb_dbal
 	*/
 	public function sql_report($mode, $query = '')
 	{
-		global $starttime, $user;
+		global $starttime;
 
 		if (!request::variable('explain', false))
 		{

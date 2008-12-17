@@ -1038,20 +1038,14 @@ for ($i = 100; $i <= 1000 ; $i += 100)
 
 $s_hidden_fields = array('t' => $topic_id);
 
-/**
-* @todo get rid of this global $_SID voodoo!
-*/
-if ($_SID)
+if (phpbb::$user->need_sid)
 {
-	$s_hidden_fields['sid'] = $_SID;
+	$s_hidden_fields['sid'] = phpbb::$user->session_id;
 }
 
-/**
-* @todo get rid of this global $_EXTRA_URL voodoo, too!
-*/
-if (!empty($_EXTRA_URL))
+if (!empty(phpbb::$user->extra_url))
 {
-	foreach ($_EXTRA_URL as $url_param)
+	foreach (phpbb::$user->extra_url as $url_param)
 	{
 		$url_param = explode('=', $url_param, 2);
 		$s_hidden_fields[$url_param[0]] = $url_param[1];

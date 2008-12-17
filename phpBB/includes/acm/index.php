@@ -69,6 +69,9 @@ class phpbb_acm
 	*/
 	private $cache_types = array('data' => NULL, 'sql' => NULL, 'tpl' => NULL, 'ctpl' => NULL);
 
+	public $phpbb_required = array();
+	public $phpbb_optional = array();
+
 	/**
 	* Constructor
 	*/

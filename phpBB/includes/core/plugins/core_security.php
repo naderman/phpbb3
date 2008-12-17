@@ -40,4 +40,7 @@ class phpbb_core_security implements phpbb_plugin
 
 $plugin = new phpbb_core_security();
 
+// Register a new plugin the mod author created
+//phpbb::register('mymod', false, 'core/plugins/core_mymod');
+
 ?>

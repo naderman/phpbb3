@@ -14,9 +14,10 @@ if (!defined('IN_PHPBB'))
 }
 
 // Server functions (building urls, redirecting...)
-class phpbb_url
+class phpbb_url extends phpbb_plugin_support
 {
-	public $phpbb_register = true;
+	public $phpbb_required = array('user', 'config');
+	public $phpbb_optional = array('template');
 
 	public function __construct() { }
 
@@ -46,7 +47,7 @@ class phpbb_url
 		$path_prefix = '';
 
 		// Determine what sort of path we have
-		if (is_absolute($path))
+		if ($this->is_absolute($path))
 		{
 			$absolute = true;
 
@@ -82,7 +83,7 @@ class phpbb_url
 					$path_prefix = '';
 				}
 			}
-			else if (isset($_SERVER['SCRIPT_FILENAME']) && !empty($_SERVER['SCRIPT_FILENAME']))
+			else if (!empty($_SERVER['SCRIPT_FILENAME']))
 			{
 				// Warning: If chdir() has been used this will lie!
 				// Warning: This has some problems sometime (CLI can create them easily)
@@ -254,7 +255,6 @@ class phpbb_url
 	*/
 	public function append_sid($url, $params = false, $is_amp = true, $session_id = false)
 	{
-		global $_SID, $_EXTRA_URL;
 		static $parsed_urls = array();
 
 		// The following code is used to make sure such calls like append_sid('viewtopic') (ommitting phpbb_root_path and php_ext) work as intended
@@ -293,7 +293,7 @@ class phpbb_url
 		}
 
 		// Handle really simple cases quickly
-		if ($_SID == '' && $session_id === false && empty($_EXTRA_URL) && !$params_is_array && !$anchor)
+		if ($session_id === false && phpbb::$user->need_sid && empty(phpbb::$user->extra_url) && !$params_is_array && !$anchor)
 		{
 			if ($params === false)
 			{
@@ -305,16 +305,16 @@ class phpbb_url
 		}
 
 		// Assign sid if session id is not specified
-		if ($session_id === false)
+		if (phpbb::$user->need_sid && $session_id === false)
 		{
-			$session_id = $_SID;
+			$session_id = phpbb::$user->session_id;
 		}
 
 		$amp_delim = ($is_amp) ? '&amp;' : '&';
 		$url_delim = (strpos($url, '?') === false) ? '?' : $amp_delim;
 
 		// Appending custom url parameter?
-		$append_url = (!empty($_EXTRA_URL)) ? implode($amp_delim, $_EXTRA_URL) : '';
+		$append_url = (!empty(phpbb::$user->extra_url)) ? implode($amp_delim, phpbb::$user->extra_url) : '';
 
 		// Use the short variant if possible ;)
 		if ($params === false)
@@ -369,15 +369,15 @@ class phpbb_url
 		$server_port = phpbb::$user->system['port'];
 
 		// Forcing server vars is the only way to specify/override the protocol
-		if ($config['force_server_vars'] || !$server_name)
+		if (phpbb::$config['force_server_vars'] || !$server_name)
 		{
-			$server_protocol = ($config['server_protocol']) ? $config['server_protocol'] : (($config['cookie_secure']) ? 'https://' : 'http://');
-			$server_name = $config['server_name'];
-			$server_port = (int) $config['server_port'];
-			$script_path = $config['script_path'];
+			$server_protocol = (phpbb::$config['server_protocol']) ? phpbb::$config['server_protocol'] : ((phpbb::$config['cookie_secure']) ? 'https://' : 'http://');
+			$server_name = phpbb::$config['server_name'];
+			$server_port = (int) phpbb::$config['server_port'];
+			$script_path = phpbb::$config['script_path'];
 
 			$url = $server_protocol . $server_name;
-			$cookie_secure = $config['cookie_secure'];
+			$cookie_secure = phpbb::$config['cookie_secure'];
 		}
 		else
 		{
@@ -385,7 +385,7 @@ class phpbb_url
 			$cookie_secure = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') ? 1 : 0;
 			$url = (($cookie_secure) ? 'https://' : 'http://') . $server_name;
 
-			$script_path = $user->page['root_script_path'];
+			$script_path = phpbb::$user->system['page']['root_script_path'];
 		}
 
 		if ($server_port && (($cookie_secure && $server_port <> 443) || (!$cookie_secure && $server_port <> 80)))
@@ -421,11 +421,9 @@ class phpbb_url
 	*/
 	function redirect($url, $return = false, $disable_cd_check = false)
 	{
-		global $db, $cache, $config, $user;
-
-		if (empty($user->lang))
+		if (empty(phpbb::$user->lang))
 		{
-			$user->add_lang('common');
+			phpbb::$user->add_lang('common');
 		}
 
 		if (!$return)
@@ -442,20 +440,20 @@ class phpbb_url
 		if ($url_parts === false)
 		{
 			// Malformed url, redirect to current page...
-			$url = generate_board_url() . '/' . $user->page['page'];
+			$url = $this->generate_board_url() . '/' . phpbb::$user->system['page']['page'];
 		}
 		else if (!empty($url_parts['scheme']) && !empty($url_parts['host']))
 		{
 			// Attention: only able to redirect within the same domain if $disable_cd_check is false (yourdomain.com -> www.yourdomain.com will not work)
-			if (!$disable_cd_check && $url_parts['host'] !== $user->host)
+			if (!$disable_cd_check && $url_parts['host'] !== phpbb::$user->system['host'])
 			{
-				$url = generate_board_url();
+				$url = $this->generate_board_url();
 			}
 		}
 		else if ($url[0] == '/')
 		{
 			// Absolute uri, prepend direct url...
-			$url = generate_board_url(true) . $url;
+			$url = $this->generate_board_url(true) . $url;
 		}
 		else
 		{
@@ -473,13 +471,13 @@ class phpbb_url
 					$url = substr($url, 1);
 				}
 
-				if ($user->page['page_dir'])
+				if (phpbb::$user->system['page']['page_dir'])
 				{
-					$url = generate_board_url() . '/' . $user->page['page_dir'] . '/' . $url;
+					$url = $this->generate_board_url() . '/' . phpbb::$user->system['page']['page_dir'] . '/' . $url;
 				}
 				else
 				{
-					$url = generate_board_url() . '/' . $url;
+					$url = $this->generate_board_url() . '/' . $url;
 				}
 			}
 			else
@@ -515,7 +513,7 @@ class phpbb_url
 				}
 
 				$url = (!empty($dir) ? $dir . '/' : '') . $url;
-				$url = generate_board_url() . '/' . $url;
+				$url = $this->generate_board_url() . '/' . $url;
 			}
 		}
 
@@ -545,14 +543,14 @@ class phpbb_url
 			header('Refresh: 0; URL=' . $url);
 
 			echo '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">';
-			echo '<html xmlns="http://www.w3.org/1999/xhtml" dir="' . $user->lang['DIRECTION'] . '" lang="' . $user->lang['USER_LANG'] . '" xml:lang="' . $user->lang['USER_LANG'] . '">';
+			echo '<html xmlns="http://www.w3.org/1999/xhtml" dir="' . phpbb::$user->lang['DIRECTION'] . '" lang="' . phpbb::$user->lang['USER_LANG'] . '" xml:lang="' . phpbb::$user->lang['USER_LANG'] . '">';
 			echo '<head>';
 			echo '<meta http-equiv="content-type" content="text/html; charset=utf-8" />';
 			echo '<meta http-equiv="refresh" content="0; url=' . str_replace('&', '&amp;', $url) . '" />';
-			echo '<title>' . $user->lang['REDIRECT'] . '</title>';
+			echo '<title>' . phpbb::$user->lang['REDIRECT'] . '</title>';
 			echo '</head>';
 			echo '<body>';
-			echo '<div style="text-align: center;">' . sprintf($user->lang['URL_REDIRECT'], '<a href="' . str_replace('&', '&amp;', $url) . '">', '</a>') . '</div>';
+			echo '<div style="text-align: center;">' . phpbb::$user->lang('URL_REDIRECT', '<a href="' . str_replace('&', '&amp;', $url) . '">', '</a>') . '</div>';
 			echo '</body>';
 			echo '</html>';
 
@@ -571,11 +569,11 @@ class phpbb_url
 	{
 		if ($url === 'index.' . PHP_EXT)
 		{
-			return append_sid('index.' . PHP_EXT);
+			return $this->append_sid('index.' . PHP_EXT);
 		}
 		else if ($url === PHPBB_ROOT_PATH . 'index.' . PHP_EXT)
 		{
-			return append_sid('index');
+			return $this->append_sid('index');
 		}
 
 		// Remove previously added sid
@@ -592,7 +590,7 @@ class phpbb_url
 			$url = preg_replace('/&amp;sid=[a-z0-9]+(&amp;)?/', '\1', $url);
 		}
 
-		return append_sid($url);
+		return $this->append_sid($url);
 	}
 
 	/**
@@ -600,10 +598,8 @@ class phpbb_url
 	*/
 	function build_url($strip_vars = false)
 	{
-		global $user;
-
 		// Append SID
-		$redirect = append_sid($user->page['page'], false, false);
+		$redirect = $this->append_sid(phpbb::$user->system['page']['page'], false, false);
 
 		// Add delimiter if not there...
 		if (strpos($redirect, '?') === false)
@@ -659,17 +655,20 @@ class phpbb_url
 	/**
 	* Meta refresh assignment
 	*/
-	function meta_refresh($time, $url)
+	function meta_refresh($time, $url, $disable_cd_check = false)
 	{
-		global $template;
+		if (phpbb::registered('template'))
+		{
+			$url = $this->redirect($url, true, $disable_cd_check);
+			$url = str_replace('&', '&amp;', $url);
 
-		$url = redirect($url, true);
-		$url = str_replace('&', '&amp;', $url);
-
-		// For XHTML compatibility we change back & to &amp;
-		$template->assign_vars(array(
-			'META' => '<meta http-equiv="refresh" content="' . $time . ';url=' . $url . '" />')
-		);
+			// For XHTML compatibility we change back & to &amp;
+			phpbb::$template->assign_var('META', '<meta http-equiv="refresh" content="' . $time . ';url=' . $url . '" />');
+		}
+		else
+		{
+			$this->redirect($url, false, $disable_cd_check);
+		}
 
 		return $url;
 	}

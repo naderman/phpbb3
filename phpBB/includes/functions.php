@@ -136,7 +136,7 @@ function still_on_time($extra_time = 15)
 *
 * @author faw, phpBB Group
 */
-function phpbb_chmod($filename, $perms = CHMOD_READ)
+function phpbb_chmod($filename, $perms = phpbb::CHMOD_READ)
 {
 	// Return if the file no longer exists.
 	if (!file_exists($filename))
@@ -201,15 +201,15 @@ function phpbb_chmod($filename, $perms = CHMOD_READ)
 	}
 
 	// Owner always has read/write permission
-	$owner = CHMOD_READ | CHMOD_WRITE;
+	$owner = phpbb::CHMOD_READ | phpbb::CHMOD_WRITE;
 	if (is_dir($filename))
 	{
-		$owner |= CHMOD_EXECUTE;
+		$owner |= phpbb::CHMOD_EXECUTE;
 
 		// Only add execute bit to the permission if the dir needs to be readable
-		if ($perms & CHMOD_READ)
+		if ($perms & phpbb::CHMOD_READ)
 		{
-			$perms |= CHMOD_EXECUTE;
+			$perms |= phpbb::CHMOD_EXECUTE;
 		}
 	}
 
@@ -227,7 +227,7 @@ function phpbb_chmod($filename, $perms = CHMOD_READ)
 		case 'group':
 			$result = @chmod($filename, ($owner << 6) + ($perms << 3) + (0 << 0));
 
-			if (!is_null($php) || ((!($perms & CHMOD_READ) || is_readable($filename)) && (!($perms & CHMOD_WRITE) || is_writable($filename))))
+			if (!is_null($php) || ((!($perms & phpbb::CHMOD_READ) || is_readable($filename)) && (!($perms & phpbb::CHMOD_WRITE) || is_writable($filename))))
 			{
 				break;
 			}
@@ -235,7 +235,7 @@ function phpbb_chmod($filename, $perms = CHMOD_READ)
 		case 'other':
 			$result = @chmod($filename, ($owner << 6) + ($perms << 3) + ($perms << 0));
 
-			if (!is_null($php) || ((!($perms & CHMOD_READ) || is_readable($filename)) && (!($perms & CHMOD_WRITE) || is_writable($filename))))
+			if (!is_null($php) || ((!($perms & phpbb::CHMOD_READ) || is_readable($filename)) && (!($perms & phpbb::CHMOD_WRITE) || is_writable($filename))))
 			{
 				break;
 			}
@@ -1750,7 +1750,7 @@ function get_backtrace()
 		{
 			continue;
 		}
-		
+
 		// Strip the current directory from path
 		if (empty($trace['file']))
 		{
@@ -2154,8 +2154,6 @@ function msg_handler($errno, $msg_text, $errfile, $errline)
 */
 function page_header($page_title = '', $display_online_list = true)
 {
-	global $SID, $_SID;
-
 	if (defined('HEADER_INC'))
 	{
 		return;
@@ -2384,8 +2382,6 @@ function page_header($page_title = '', $display_online_list = true)
 		'S_USER_NEW_PRIVMSG'			=> phpbb::$user->data['user_new_privmsg'],
 		'S_USER_UNREAD_PRIVMSG'			=> phpbb::$user->data['user_unread_privmsg'],
 
-		'SID'				=> $SID,
-		'_SID'				=> $_SID,
 		'SESSION_ID'		=> phpbb::$user->session_id,
 		'ROOT_PATH'			=> PHPBB_ROOT_PATH,
 

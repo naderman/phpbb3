@@ -28,6 +28,8 @@ class phpbb_cache
 	*/
 	private function ___construct() { }
 
+	public $phpbb_required = array('config', 'acm', 'db');
+
 	/**
 	* Get config values
 	*/

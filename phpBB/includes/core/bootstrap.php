@@ -130,13 +130,10 @@ require_once PHPBB_ROOT_PATH . 'includes/utf/utf_tools.' . PHP_EXT;
 
 // Add pre-defined system core files
 require_once PHPBB_ROOT_PATH . 'includes/core/request.' . PHP_EXT;
-require_once PHPBB_ROOT_PATH . 'includes/core/security.' . PHP_EXT;
-require_once PHPBB_ROOT_PATH . 'includes/core/system.' . PHP_EXT;
-require_once PHPBB_ROOT_PATH . 'includes/core/url.' . PHP_EXT;
 
-phpbb::register('security');
-phpbb::register('url');
-phpbb::register('system');
+phpbb::register('security', false, 'core/security');
+phpbb::register('url', false, 'core/url');
+phpbb::register('system', false, 'core/system');
 
 // Now search for required core files...
 if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/plugins/'))
