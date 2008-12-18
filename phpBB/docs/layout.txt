@@ -1,3 +1,8 @@
+@todo
+	Are plugins and hooks really that different? At the moment plugins are quite independant, the class name is irrelevant and the definition is done by the coder.
+	Think about where hooks fit and if plugins are the new hooks (but then of course not named plugin but hook). The architecture would allow mod authors to use it too.
+	If this can be done, think about a more sophisticated method to plug them in with simple calls OR document every case and document every special case (override != override)
+
 /**
 * General development pardigm used
 */
