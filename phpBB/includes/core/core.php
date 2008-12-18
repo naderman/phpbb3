@@ -30,7 +30,7 @@ abstract class phpbb_plugin_support
 		return (!empty($this->plugin_append[$name]));
 	}
 
-	public function register_method($name, $callback)
+	public function register_method($name, $object)
 	{
 		if (method_exists($this, $name))
 		{
@@ -39,13 +39,13 @@ abstract class phpbb_plugin_support
 
 		if (isset($this->plugin_methods[$name]))
 		{
-			trigger_error('Method ' . $name . ' in class ' . get_class($callback) . ' is already defined in class ' . get_class($this->plugin_methods[$name]), E_USER_ERROR);
+			trigger_error('Method ' . $name . ' in class ' . get_class($object) . ' is already defined in class ' . get_class($this->plugin_methods[$name]), E_USER_ERROR);
 		}
 
-		$this->plugin_methods[$name] = $callback;
+		$this->plugin_methods[$name] = $object;
 	}
 
-	public function register_attribute($name, $obj)
+	public function register_attribute($name, $object)
 	{
 		if (property_exists($this, $name))
 		{
@@ -54,20 +54,20 @@ abstract class phpbb_plugin_support
 
 		if (isset($this->plugin_attributes[$name]))
 		{
-			trigger_error('Attribute ' . $name . ' in class ' . get_class($obj) . ' already defined in class ' . get_class($this->plugin_attributes[$name]), E_USER_ERROR);
+			trigger_error('Attribute ' . $name . ' in class ' . get_class($object) . ' already defined in class ' . get_class($this->plugin_attributes[$name]), E_USER_ERROR);
 		}
 
-		$this->plugin_attributes[$name] = $obj;
+		$this->plugin_attributes[$name] = $object;
 	}
 
-	public function register_append($name, $obj)
+	public function register_append($name, $object)
 	{
 		if (!isset($this->plugin_append[$name]))
 		{
 			$this->plugin_append[$name] = array();
 		}
 
-		$this->plugin_append[$name][] = $obj;
+		$this->plugin_append[$name][] = $object;
 	}
 
 	public function plugin_append_call()

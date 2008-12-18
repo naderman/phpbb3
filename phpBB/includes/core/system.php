@@ -114,8 +114,6 @@ class phpbb_system extends phpbb_plugin_support implements ArrayAccess
 	*/
 	protected function get_page()
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array());
-
 		$page_array = array();
 
 		// First of all, get the request uri...

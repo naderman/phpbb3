@@ -49,12 +49,12 @@ class phpbb_user extends phpbb_session
 	/**
 	* Constructor to set the lang path
 	*/
-	public function __construct($custom_lang_path = false)
+	public function __construct($auth_method, $custom_lang_path = false)
 	{
 		parent::__construct();
 
 		// Init auth object
-		$method = basename(trim(phpbb::$config['auth_method']));
+		$method = basename(trim($auth_method));
 		$class = 'phpbb_auth_' . $method;
 
 		if (class_exists($class))

@@ -131,7 +131,7 @@ phpbb::register('template');
 phpbb::register('acl');
 
 // Register user object
-phpbb::register('user');
+phpbb::register('user', false, false, phpbb::$config['auth_method']);
 
 /* Add own hook handler, if present. :o
 phpbb::register('hooks');

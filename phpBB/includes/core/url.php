@@ -230,8 +230,10 @@ class phpbb_url extends phpbb_plugin_support
 	*/
 	public function get($url)
 	{
+		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($url));
+		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $url, $url) : $url;
+
 		//if ($_fnc = array(__CLASS__, __FUNCTION__) && phpbb::$hooks->call($_fnc, $url) && phpbb::$hooks->return($_fnc)) return phpbb::$hooks->return_result($_fnc);
-		return $url;
 	}
 
 	/**
@@ -315,6 +317,13 @@ class phpbb_url extends phpbb_plugin_support
 
 		// Appending custom url parameter?
 		$append_url = (!empty(phpbb::$user->extra_url)) ? implode($amp_delim, phpbb::$user->extra_url) : '';
+
+		if ($this->plugin_overload(__FUNCTION__))
+		{
+			// For the invocation we use prepared data
+			$url = $this->__call(__FUNCTION__, array($url, $params, $session_id, $append_url, $anchor, $amp_delim, $url_delim));
+			return $this->get($url);
+		}
 
 		// Use the short variant if possible ;)
 		if ($params === false)
@@ -659,18 +668,18 @@ class phpbb_url extends phpbb_plugin_support
 	{
 		if (phpbb::registered('template'))
 		{
-			$url = $this->redirect($url, true, $disable_cd_check);
-			$url = str_replace('&', '&amp;', $url);
+			$result_url = $this->redirect($url, true, $disable_cd_check);
+			$result_url = str_replace('&', '&amp;', $result_url);
 
 			// For XHTML compatibility we change back & to &amp;
-			phpbb::$template->assign_var('META', '<meta http-equiv="refresh" content="' . $time . ';url=' . $url . '" />');
+			phpbb::$template->assign_var('META', '<meta http-equiv="refresh" content="' . $time . ';url=' . $result_url . '" />');
 		}
 		else
 		{
 			$this->redirect($url, false, $disable_cd_check);
 		}
 
-		return $url;
+		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result_url, $time, $url, $disable_cd_check) : $result_url;
 	}
 }
 
