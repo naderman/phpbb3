@@ -35,7 +35,8 @@ else
 }
 
 // Initialize some standard variables, constants and classes we need
-include_once(PHPBB_ROOT_PATH . 'includes/core/core.' . PHP_EXT);
+include PHPBB_ROOT_PATH . 'includes/core/core.' . PHP_EXT;
+include PHPBB_ROOT_PATH . 'plugins/bootstrap.' . PHP_EXT;
 
 // If we are on PHP >= 6.0.0 we do not need some code
 if (version_compare(PHP_VERSION, '6.0.0-dev', '>='))
@@ -135,7 +136,15 @@ phpbb::register('security', false, 'core/security');
 phpbb::register('url', false, 'core/url');
 phpbb::register('system', false, 'core/system');
 
-// Now search for required core files...
+
+$plugin_setup = new phpbb_plugin_setup();
+
+require_once PHPBB_ROOT_PATH . 'plugins/myapp/bootstrap.' . PHP_EXT;
+
+$plugin_setup->set_application('myapp');
+$plugin_setup->call_plugins();
+
+/* Now search for required core files...
 if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/plugins/'))
 {
 	while (($file = readdir($dh)) !== false)
@@ -178,5 +187,5 @@ if ($dh = @opendir(PHPBB_ROOT_PATH . 'includes/core/plugins/'))
 	}
 	closedir($dh);
 }
-
+*/
 ?>

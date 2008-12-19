@@ -38,14 +38,15 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function gen_rand_string($num_chars = 8)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($num_chars));
+		if ($this->method_override(__FUNCTION__)) return $this->call_override(__FUNCTION__, $num_chars);
+		if ($this->method_prefix(__FUNCTION__)) $this->call_prefix(__FUNCTION__, $num_chars);
 
 		$rand_str = $this->unique_id();
 		$rand_str = str_replace('0', 'Z', strtoupper(base_convert($rand_str, 16, 35)));
 
 		$result = substr($rand_str, 0, $num_chars);
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $num_chars) : $result;
+		return ($this->method_suffix(__FUNCTION__)) ? $this->call_suffix(__FUNCTION__, $result, $num_chars) : $result;
 	}
 
 	/**
@@ -54,7 +55,8 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function unique_id($extra = 'c')
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($extra));
+		if ($this->method_override(__FUNCTION__)) return $this->call_override(__FUNCTION__, $extra);
+		if ($this->method_prefix(__FUNCTION__)) $this->call_prefix(__FUNCTION__, $extra);
 
 		if (!isset(phpbb::$config['rand_seed']))
 		{
@@ -75,7 +77,7 @@ class phpbb_security extends phpbb_plugin_support
 
 		$result = substr($val, 4, 16);
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $extra) : $result;
+		return ($this->method_suffix(__FUNCTION__)) ? $this->call_suffix(__FUNCTION__, $result, $extra) : $result;
 	}
 
 	/**
@@ -109,8 +111,6 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function hash_password($password)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($password));
-
 		$itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
 		$random_state = $this->unique_id();
@@ -138,7 +138,7 @@ class phpbb_security extends phpbb_plugin_support
 		$hash = $this->_hash_crypt_private($password, $this->_hash_gensalt_private($random, $itoa64), $itoa64);
 		$result = (strlen($hash) == 34) ? $hash : md5($password);
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $password) : $result;
+		return $result;
 	}
 
 	/**
@@ -151,8 +151,6 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function check_password($password, $hash)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($password, $hash));
-
 		$itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 		if (strlen($hash) == 34)
 		{
@@ -163,7 +161,7 @@ class phpbb_security extends phpbb_plugin_support
 			$result = (md5($password) === $hash) ? true : false;
 		}
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $password, $hash) : $result;
+		return $result;
 	}
 
 	/**
@@ -173,8 +171,6 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function hash_link($link_name)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($link_name));
-
 		if (!isset(phpbb::$user->data["hash_$link_name"]))
 		{
 			phpbb::$user->data["hash_$link_name"] = substr(sha1(phpbb::$user->data['user_form_salt'] . $link_name), 0, 8);
@@ -182,7 +178,7 @@ class phpbb_security extends phpbb_plugin_support
 
 		$result = phpbb::$user->data["hash_$link_name"];
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $link_name) : $result;
+		return $result;
 	}
 
 	/**
@@ -193,11 +189,8 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function check_link($token, $link_name)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($token, $link_name));
-
 		$result = $token === $this->generate_link_hash($link_name);
-
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $token, $link_name) : $result;
+		return $result;
 	}
 
 	/**
@@ -206,8 +199,6 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function add_form_key($form_name)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($form_name));
-
 		$now = time();
 		$token_sid = (phpbb::$user->data['user_id'] == ANONYMOUS && !empty(phpbb::$config['form_token_sid_guests'])) ? phpbb::$user->session_id : '';
 		$token = sha1($now . phpbb::$user->data['user_form_salt'] . $form_name . $token_sid);
@@ -215,8 +206,6 @@ class phpbb_security extends phpbb_plugin_support
 		$template->assign_vars(array(
 			'S_FORM_TOKEN'	=> build_hidden_fields(array('creation_time' => $now, 'form_token' => $token)),
 		));
-
-		if ($this->plugin_append(__FUNCTION__)) $this->plugin_append_call(__FUNCTION__, true);
 	}
 
 	/**
@@ -228,8 +217,6 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function check_form_key($form_name, $timespan = false, $return_page = '', $trigger = false)
 	{
-		if ($this->plugin_overload(__FUNCTION__)) return $this->__call(__FUNCTION__, array($form_name, $timespan, $return_page, $trigger));
-
 		$result = false;
 
 		if ($timespan === false)
@@ -263,7 +250,7 @@ class phpbb_security extends phpbb_plugin_support
 			trigger_error(phpbb::$user->lang['FORM_INVALID'] . $return_page);
 		}
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result, $form_name, $timespan, $return_page, $trigger) : $result;
+		return $result;
 	}
 
 	/**
