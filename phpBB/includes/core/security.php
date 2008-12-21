@@ -38,15 +38,21 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function gen_rand_string($num_chars = 8)
 	{
+		echo "\nCall method override in gen_rand_string(): \n";
 		if ($this->method_override(__FUNCTION__)) return $this->call_override(__FUNCTION__, $num_chars);
-		if ($this->method_prefix(__FUNCTION__)) $this->call_prefix(__FUNCTION__, $num_chars);
+
+		echo "\nValue of \$num_chars in gen_rand_string(): $num_chars\n";
+		echo "\nCall method inject 'default' in gen_rand_string(): \n";
+		if ($this->method_inject(__FUNCTION__)) $this->call_inject(__FUNCTION__, array('default', &$num_chars));
+		echo "\nValue of \$num_chars in gen_rand_string(): $num_chars\n";
 
 		$rand_str = $this->unique_id();
 		$rand_str = str_replace('0', 'Z', strtoupper(base_convert($rand_str, 16, 35)));
 
 		$result = substr($rand_str, 0, $num_chars);
 
-		return ($this->method_suffix(__FUNCTION__)) ? $this->call_suffix(__FUNCTION__, $result, $num_chars) : $result;
+		echo "\nCall method inject 'return' in gen_rand_string(): \n";
+		return ($this->method_inject(__FUNCTION__, 'return')) ? $this->call_inject(__FUNCTION__, array('return', $result, $num_chars)) : $result;
 	}
 
 	/**
@@ -55,9 +61,6 @@ class phpbb_security extends phpbb_plugin_support
 	*/
 	public function unique_id($extra = 'c')
 	{
-		if ($this->method_override(__FUNCTION__)) return $this->call_override(__FUNCTION__, $extra);
-		if ($this->method_prefix(__FUNCTION__)) $this->call_prefix(__FUNCTION__, $extra);
-
 		if (!isset(phpbb::$config['rand_seed']))
 		{
 			$val = md5(md5($extra) . microtime());
@@ -76,8 +79,6 @@ class phpbb_security extends phpbb_plugin_support
 		}
 
 		$result = substr($val, 4, 16);
-
-		return ($this->method_suffix(__FUNCTION__)) ? $this->call_suffix(__FUNCTION__, $result, $extra) : $result;
 	}
 
 	/**

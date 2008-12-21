@@ -24,10 +24,6 @@ include(PHPBB_ROOT_PATH . 'includes/functions_display.' . PHP_EXT);
 phpbb::$user->init();
 phpbb::$user->setup('viewforum');
 
-echo phpbb::$user->system['path'];
-print_r(phpbb::$user->system['page']);
-
-echo phpbb::$security->test();
 echo phpbb::$security->gen_rand_string(9);
 
 display_forums('', phpbb::$config['load_moderators']);

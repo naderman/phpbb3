@@ -2154,6 +2154,8 @@ function msg_handler($errno, $msg_text, $errfile, $errline)
 */
 function page_header($page_title = '', $display_online_list = true)
 {
+	if (phpbb::$hooks->function_override(__FUNCTION__)) return phpbb::$hooks->call_override(__FUNCTION__, $page_title, $display_online_list);
+
 	if (defined('HEADER_INC'))
 	{
 		return;
@@ -2170,6 +2172,9 @@ function page_header($page_title = '', $display_online_list = true)
 		}
 	}
 
+	echo "\nCall function inject 'default' in page_header(): \n";
+	if (phpbb::$hooks->function_inject(__FUNCTION__)) phpbb::$hooks->call_inject(__FUNCTION__, array('default', &$page_title, &$display_online_list));
+
 	// Generate logged in/logged out status
 	if (phpbb::$user->data['user_id'] != ANONYMOUS)
 	{
@@ -2181,6 +2186,11 @@ function page_header($page_title = '', $display_online_list = true)
 		$u_login_logout = phpbb::$url->append_sid('ucp', 'mode=login');
 		$l_login_logout = phpbb::$user->lang['LOGIN'];
 	}
+
+	echo "\nValue of \$u_login_logout in function page_header(): $u_login_logout\n";
+	echo "\nCall function inject 'login_logout' in page_header(): \n";
+	if (phpbb::$hooks->function_inject(__FUNCTION__, 'login_logout')) phpbb::$hooks->call_inject(__FUNCTION__, array('login_logout', &$u_login_logout, &$l_login_logout));
+	echo "\nValue of \$u_login_logout in function page_header(): $u_login_logout\n";
 
 	// Last visit date/time
 	$s_last_visit = (phpbb::$user->data['user_id'] != ANONYMOUS) ? phpbb::$user->format_date(phpbb::$user->data['session_last_visit']) : '';
@@ -2457,7 +2467,8 @@ function page_header($page_title = '', $display_online_list = true)
 	header('Expires: 0');
 	header('Pragma: no-cache');
 
-	return;
+	echo "\nCall function inject 'return' in page_header(): \n";
+	if (phpbb::$hooks->function_inject(__FUNCTION__, 'return')) return phpbb::$hooks->call_inject(__FUNCTION__, 'return');
 }
 
 /**

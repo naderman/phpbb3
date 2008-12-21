@@ -206,7 +206,7 @@ class phpbb_system extends phpbb_plugin_support implements ArrayAccess
 			'forum'				=> request_var('f', 0),
 		);
 
-		return ($this->method_suffix(__FUNCTION__)) ? $this->call_suffix(__FUNCTION__, $page_array) : $page_array;
+		return ($this->method_inject(__FUNCTION__, 'return')) ? $this->call_inject(__FUNCTION__, array('return', $page_array)) : $page_array;
 	}
 
 	protected function get_browser()

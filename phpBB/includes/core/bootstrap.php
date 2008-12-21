@@ -139,7 +139,7 @@ phpbb::register('system', false, 'core/system');
 
 $plugin_setup = new phpbb_plugin_setup();
 
-require_once PHPBB_ROOT_PATH . 'plugins/myapp/bootstrap.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'plugins/myapp/myapp.' . PHP_EXT;
 
 $plugin_setup->set_application('myapp');
 $plugin_setup->call_plugins();

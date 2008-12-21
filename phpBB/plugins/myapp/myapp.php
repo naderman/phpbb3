@@ -1,4 +1,12 @@
 <?php
+/**
+*
+* @package plugins
+* @version $Id$
+* @copyright (c) 2008 phpBB Group
+* @license http://opensource.org/licenses/gpl-license.php GNU Public License
+*
+*/
 
 if (!defined('IN_PHPBB'))
 {
@@ -7,19 +15,16 @@ if (!defined('IN_PHPBB'))
 
 class phpbb_myapp_info implements phpbb_plugin_info
 {
+	public $application_name = 'My Application';
+	public $author = 'Meik Sievertsen';
+	public $version = '1.0.0';
+
 	function setup_plugin(phpbb_plugin_setup $object)
 	{
-		// Pass on some general information
-		$object->add_plugin(array(
-			'application'		=> 'myapp',
-			'author'			=> 'Meik Sievertsen',
-			'version'			=> '1.0.0',
-		));
-
-		// Define common includes which are needed by default
+		// Define common files included by default
 		$object->register_includes('functions', 'core_system', 'core_url');
 
-		// Define the files phpBB should call within the setup process
+		// Define the plugins/classes registered within the setup process
 		$object->register_plugins('phpbb_core_system', 'phpbb_core_url', 'phpbb_core_security');
 
 		// Add one simple hook...
@@ -28,7 +33,8 @@ class phpbb_myapp_info implements phpbb_plugin_info
 		//		FUNCTION_OVERRIDE: Hook is called instead of the function.
 		//		FUNCTION_PREFIX: Hook is called, then the function is called. *Parameters are passed by reference*
 		//		FUNCTION_SUFFIX: Function is called, then the hook is called. *The result is passed to the hook* *Parameters are passed*
-		$object->register_function('exit_handler', 'my_exit_handler', phpbb::FUNCTION_SUFFIX);
+		$object->register_function('page_header', 'my_page_header_prefix', phpbb::FUNCTION_INJECT, 'default');
+		$object->register_function('page_header', 'my_page_header_login', phpbb::FUNCTION_INJECT, 'login_logout');
 	}
 
 	function install()

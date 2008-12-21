@@ -1,4 +1,13 @@
 <?php
+/**
+*
+* @package API
+* @version $Id: bootstrap.php 9207 2008-12-19 16:59:21Z acydburn $
+* @copyright (c) 2008 phpBB Group
+* @license http://opensource.org/licenses/gpl-license.php GNU Public License
+*
+*/
+
 if (!defined('IN_PHPBB'))
 {
 	exit();

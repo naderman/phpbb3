@@ -14,20 +14,20 @@ if (!defined('IN_PHPBB'))
 }
 
 /**
-* static phpBB class
 * @package core
 * @author acydburn
 */
-class phpbb
+abstract class phpbb
 {
 	/**#@+
-	* Our own static variables
+	* Directly assigned objects
 	*/
 	public static $template = NULL;
 	public static $user = NULL;
 	public static $db = NULL;
 	public static $acm = NULL;
 	public static $acl = NULL;
+	public static $hooks = NULL;
 
 	public static $url = NULL;
 	public static $security = NULL;
@@ -48,15 +48,16 @@ class phpbb
 	const CHMOD_WRITE = 2;
 	const CHMOD_EXECUTE = 1;
 
-	const METHOD_ADD = 1;
-	const METHOD_OVERRIDE = 2;
-	const METHOD_PREFIX = 4;
-	const METHOD_SUFFIX = 8;
+	/**#@+
+	* Constants defining plugin modes
+	*/
+	const PLUGIN_ADD = 1;
+	const PLUGIN_OVERRIDE = 2;
+	const PLUGIN_INJECT = 4;
+	/**#@-*/
 
-	const FUNCTION_OVERRIDE = 1;
-	const FUNCTION_PREFIX = 2;
-	const FUNCTION_SUFFIX = 4;
-
+	const FUNCTION_INJECT = 1;
+	const FUNCTION_OVERRIDE = 2;
 
 	/**
 	* A static array holding custom objects

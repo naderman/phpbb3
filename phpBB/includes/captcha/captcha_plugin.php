@@ -1,4 +1,13 @@
 <?php
+/**
+*
+* @package VC
+* @version $Id: bootstrap.php 9207 2008-12-19 16:59:21Z acydburn $
+* @copyright (c) 2008 phpBB Group
+* @license http://opensource.org/licenses/gpl-license.php GNU Public License
+*
+* Within this file only the framework with all components but no phpBB-specific things will be loaded
+*/
 
 interface phpbb_captcha_plugin
 {
