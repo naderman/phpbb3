@@ -144,7 +144,15 @@ class request
 		{
 			foreach (self::$super_globals as $const => $super_global)
 			{
-				self::$input[$const] = isset($GLOBALS[$super_global]) ? $GLOBALS[$super_global] : array();
+				if ($const == request::REQUEST)
+				{
+					// Far away from ideal... just a quick hack to let request_var() work again
+					self::$input[$const] = array_merge($GLOBALS['_POST'], $GLOBALS['_GET']);
+				}
+				else
+				{
+					self::$input[$const] = isset($GLOBALS[$super_global]) ? $GLOBALS[$super_global] : array();
+				}
 			}
 
 			self::$initialised = true;

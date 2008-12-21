@@ -144,6 +144,10 @@ foreach (phpbb_cache::obtain_hooks() as $hook)
 // Within the user-facing files we call:
 //phpbb::$user->start();
 
+// Register Plugins
+phpbb::$plugins->init(PHPBB_ROOT_PATH . 'plugins/');
+phpbb::$plugins->setup();
+
 // Register API
 phpbb::register('api');
 

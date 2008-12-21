@@ -64,19 +64,17 @@ function set_config($config_name, $config_value, $is_dynamic = false)
 */
 function get_formatted_filesize($bytes, $add_size_lang = true)
 {
-	global $user;
-
 	if ($bytes >= pow(2, 20))
 	{
-		return ($add_size_lang) ? round($bytes / 1024 / 1024, 2) . ' ' . $user->lang['MIB'] : round($bytes / 1024 / 1024, 2);
+		return ($add_size_lang) ? round($bytes / 1024 / 1024, 2) . ' ' . phpbb::$user->lang['MIB'] : round($bytes / 1024 / 1024, 2);
 	}
 
 	if ($bytes >= pow(2, 10))
 	{
-		return ($add_size_lang) ? round($bytes / 1024, 2) . ' ' . $user->lang['KIB'] : round($bytes / 1024, 2);
+		return ($add_size_lang) ? round($bytes / 1024, 2) . ' ' . phpbb::$user->lang['KIB'] : round($bytes / 1024, 2);
 	}
 
-	return ($add_size_lang) ? ($bytes) . ' ' . $user->lang['BYTES'] : ($bytes);
+	return ($add_size_lang) ? ($bytes) . ' ' . phpbb::$user->lang['BYTES'] : ($bytes);
 }
 
 /**
@@ -2154,7 +2152,7 @@ function msg_handler($errno, $msg_text, $errfile, $errline)
 */
 function page_header($page_title = '', $display_online_list = true)
 {
-	if (phpbb::$hooks->function_override(__FUNCTION__)) return phpbb::$hooks->call_override(__FUNCTION__, $page_title, $display_online_list);
+	if (phpbb::$plugins->function_override(__FUNCTION__)) return phpbb::$plugins->call_override(__FUNCTION__, $page_title, $display_online_list);
 
 	if (defined('HEADER_INC'))
 	{
@@ -2173,7 +2171,7 @@ function page_header($page_title = '', $display_online_list = true)
 	}
 
 	echo "\nCall function inject 'default' in page_header(): \n";
-	if (phpbb::$hooks->function_inject(__FUNCTION__)) phpbb::$hooks->call_inject(__FUNCTION__, array('default', &$page_title, &$display_online_list));
+	if (phpbb::$plugins->function_inject(__FUNCTION__)) phpbb::$plugins->call_inject(__FUNCTION__, array('default', &$page_title, &$display_online_list));
 
 	// Generate logged in/logged out status
 	if (phpbb::$user->data['user_id'] != ANONYMOUS)
@@ -2189,7 +2187,7 @@ function page_header($page_title = '', $display_online_list = true)
 
 	echo "\nValue of \$u_login_logout in function page_header(): $u_login_logout\n";
 	echo "\nCall function inject 'login_logout' in page_header(): \n";
-	if (phpbb::$hooks->function_inject(__FUNCTION__, 'login_logout')) phpbb::$hooks->call_inject(__FUNCTION__, array('login_logout', &$u_login_logout, &$l_login_logout));
+	if (phpbb::$plugins->function_inject(__FUNCTION__, 'login_logout')) phpbb::$plugins->call_inject(__FUNCTION__, array('login_logout', &$u_login_logout, &$l_login_logout));
 	echo "\nValue of \$u_login_logout in function page_header(): $u_login_logout\n";
 
 	// Last visit date/time
@@ -2468,7 +2466,7 @@ function page_header($page_title = '', $display_online_list = true)
 	header('Pragma: no-cache');
 
 	echo "\nCall function inject 'return' in page_header(): \n";
-	if (phpbb::$hooks->function_inject(__FUNCTION__, 'return')) return phpbb::$hooks->call_inject(__FUNCTION__, 'return');
+	if (phpbb::$plugins->function_inject(__FUNCTION__, 'return')) return phpbb::$plugins->call_inject(__FUNCTION__, 'return');
 }
 
 /**
@@ -2484,14 +2482,14 @@ function page_footer($run_cron = true)
 		$mtime = explode(' ', microtime());
 		$totaltime = $mtime[0] + $mtime[1] - $starttime;
 
-		if (request::variable('explain', false) && phpbb::$acl->acl_get('a_') && defined('DEBUG_EXTRA') && method_exists(phpbb::$db, 'sql_report'))
+		if (request::variable('explain', false) && /*phpbb::$acl->acl_get('a_') &&*/ defined('DEBUG_EXTRA') && method_exists(phpbb::$db, 'sql_report'))
 		{
 			phpbb::$db->sql_report('display');
 		}
 
 		$debug_output = sprintf('Time : %.3fs | ' . phpbb::$db->sql_num_queries() . ' Queries | GZIP : ' . ((phpbb::$config['gzip_compress']) ? 'On' : 'Off') . ((phpbb::$user->system['load']) ? ' | Load : ' . phpbb::$user->system['load'] : ''), $totaltime);
 
-		if (phpbb::$acl->acl_get('a_') && defined('DEBUG_EXTRA'))
+		if (/*phpbb::$acl->acl_get('a_') &&*/ defined('DEBUG_EXTRA'))
 		{
 			if (function_exists('memory_get_usage'))
 			{

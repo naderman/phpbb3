@@ -1,10 +1,10 @@
 <?php
 
-class phpbb_core_system implements phpbb_plugin
+class phpbb_core_system implements phpbb_plugin_setup
 {
 	public $phpbb_plugin = 'system';
 
-	public function register_plugin(phpbb_plugin_support $object)
+	public function setup_plugin(phpbb_plugin_support $object)
 	{
 		// First parameter is the method name to inject or the new name. Second parameter is the method name within this class. The third is always $this. Fourth optional parameter defined the mode
 		//		METHOD_ADD: default. Method is an individual method. *Object is passed*
@@ -31,12 +31,12 @@ class phpbb_core_system implements phpbb_plugin
 	}
 }
 
-class phpbb_core_security implements phpbb_plugin
+class phpbb_core_security implements phpbb_plugin_setup
 {
 	var $phpbb_plugin = 'security';
 	var $x = 1;
 
-	function register_plugin(phpbb_plugin_support $object)
+	function setup_plugin(phpbb_plugin_support $object)
 	{
 		$object->register_method(false, 'test', $this);
 		$object->register_method('unique_id', 'unique_id', $this, phpbb::PLUGIN_OVERRIDE);

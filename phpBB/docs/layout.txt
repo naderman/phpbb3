@@ -383,3 +383,36 @@ Other pre-defined logical directories:
 	posting/: Posting relevant files
 	memberlist/: Memberlist relevant files
 	search/: Files for teh search plugins
+
+/**
+Plugin documentation:
+
+Rules:
+	- Plugins must define one directory in /plugins/
+	- This directory must contain a file bootstrap.php with the information about the plugins structure, installation and uninstallation routines
+	- Plugins could consist of any additional files or directories
+
+Sample Layout:
+	- Plugin setup file: /plugins/plugin_myapp.php
+	- Additional directory /plugins/myapp/
+	- Additional files /plugins/myapp/functions.php, /plugins/myapp/core_system.php, /plugins/myapp/core_url.php
+	- The plugin should add a new method to the core_system class to get the PATH environment variable
+	- The plugin should add a new key to the systems page array for the application path
+	- The plugin should change the output of URL's in phpBB and transform them to human readable URL's
+	- The plugin should also inject the exit_handler to finish it's work
+*/
+
+/**
+Modules documentation:
+
+Rules:
+	- Modules must define one directory in /modules/
+	- This directory must contain two files:
+		bootstrap.php with the information about the modules structure, installation and uninstallation routines.
+		index.php with code to handle the different modes the module is executing
+	- Modules may consist of any number of additional files or directories
+
+	ucp/: The user control panel.
+	mcp/: The moderator control panel.
+	acp/: The administration control panel.
+*/

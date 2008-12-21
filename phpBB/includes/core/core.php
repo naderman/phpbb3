@@ -27,7 +27,7 @@ abstract class phpbb
 	public static $db = NULL;
 	public static $acm = NULL;
 	public static $acl = NULL;
-	public static $hooks = NULL;
+	public static $plugins = NULL;
 
 	public static $url = NULL;
 	public static $security = NULL;

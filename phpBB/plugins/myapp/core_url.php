@@ -1,5 +1,5 @@
 <?php
-
+/*
 class phpbb_core_url implements phpbb_plugin
 {
 	public $phpbb_plugin = 'url';
@@ -8,5 +8,5 @@ class phpbb_core_url implements phpbb_plugin
 	{
 	}
 }
-
+*/
 ?>

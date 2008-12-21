@@ -15,17 +15,18 @@ if (!defined('IN_PHPBB'))
 
 class phpbb_myapp_info implements phpbb_plugin_info
 {
-	public $application_name = 'My Application';
+	public $name = 'My Application';
+	public $description = 'Description';
 	public $author = 'Meik Sievertsen';
 	public $version = '1.0.0';
 
-	function setup_plugin(phpbb_plugin_setup $object)
+	function setup_plugin(phpbb_plugins $object)
 	{
 		// Define common files included by default
 		$object->register_includes('functions', 'core_system', 'core_url');
 
 		// Define the plugins/classes registered within the setup process
-		$object->register_plugins('phpbb_core_system', 'phpbb_core_url', 'phpbb_core_security');
+		$object->register_plugins('phpbb_core_system', 'phpbb_core_security');
 
 		// Add one simple hook...
 		// First parameter is the function to hook into, second the own function called then, third a constant defining the hook

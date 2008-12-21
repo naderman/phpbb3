@@ -779,7 +779,7 @@ class phpbb_dbal
 					<body id="errorpage">
 					<div id="wrap">
 						<div id="page-header">
-							<a href="' . build_url('explain') . '">Return to previous page</a>
+							<a href="' . phpbb::$url->build_url('explain') . '">Return to previous page</a>
 						</div>
 						<div id="page-body">
 							<div id="acp">
