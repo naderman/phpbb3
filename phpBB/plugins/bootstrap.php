@@ -22,6 +22,9 @@ class phpbb_install
 */
 class phpbb_plugins
 {
+	public $phpbb_required = array();
+	public $phpbb_optional = array();
+
 	public $plugin_path = false;
 	public $plugins = array();
 
@@ -148,6 +151,12 @@ class phpbb_plugins
 				{
 					$this->hooks[$function][$mode][$action][] = $hook;
 				}
+			}
+
+			// Call init method?
+			if (method_exists($plugin->setup, 'init'))
+			{
+				$plugin->setup->init();
 			}
 		}
 	}

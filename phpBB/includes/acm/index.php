@@ -64,13 +64,13 @@ if (!defined('CONFIG_ACM_TYPE'))
 */
 class phpbb_acm
 {
-	/**
-	* Currently registered core acm types
-	*/
-	private $cache_types = array('data' => NULL, 'sql' => NULL, 'tpl' => NULL, 'ctpl' => NULL);
-
 	public $phpbb_required = array();
 	public $phpbb_optional = array();
+
+	/**
+	* Currently registered core acm types.
+	*/
+	public $cache_types = array('data' => NULL, 'sql' => NULL, 'tpl' => NULL, 'ctpl' => NULL);
 
 	/**
 	* Constructor
@@ -83,9 +83,18 @@ class phpbb_acm
 	*/
 	public function __call($method, $arguments)
 	{
-		// Get cache type
-		$cache_type = $arguments[0];
-		array_shift($arguments);
+		// Special cases for some methods. ;)
+		if (strpos($method, 'get_') === 0 || strpos($method, 'put_') === 0)
+		{
+			$cache_type = substr($method, 4);
+			$method = substr($method, 0, 3);
+		}
+		else
+		{
+			// Get cache type
+			$cache_type = $arguments[0];
+			array_shift($arguments);
+		}
 
 		// Check if the cache type is initialized and exist
 		if (!$this->type_exists($cache_type))
@@ -160,7 +169,7 @@ class phpbb_acm
 	}
 
 	/**
-	* Register a custom cache type/class
+	* Register a custom cache type/class.
 	*
 	* @param string $cache_type		The cache type to register/set
 	* @param string $cache_append	String to append to the cached data as identifier (if the coder has different types to distinct from)
@@ -228,7 +237,7 @@ class phpbb_acm
 	}
 
 	/**
-	* Check if a specific cache type is supported with the ACM class
+	* Check if a specified cache type is supported with the ACM class
 	*
 	* @param string $cache_type The cache type to check.
 	*
@@ -241,7 +250,7 @@ class phpbb_acm
 			return false;
 		}
 
-		return !empty($this->cache_types[$cache_type]->supported[$cache_type]);
+		return !empty($this->cache_types[$cache_type]->supported[$cache_type]) || $this->cache_types[$cache_type]->supported === true;
 	}
 
 	/**
@@ -264,7 +273,7 @@ class phpbb_acm
 }
 
 /**
-* The abstract class all ACM plugins must extend. This abstract defines an object to be filled, with some functions pre-filled and some which must be filled.
+* The abstract class all ACM plugins must extend.
 * @package acm
 */
 abstract class phpbb_acm_abstract

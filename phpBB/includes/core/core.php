@@ -56,8 +56,8 @@ abstract class phpbb
 	const PLUGIN_INJECT = 4;
 	/**#@-*/
 
-	const FUNCTION_INJECT = 1;
-	const FUNCTION_OVERRIDE = 2;
+	const FUNCTION_OVERRIDE = 1;
+	const FUNCTION_INJECT = 2;
 
 	/**
 	* A static array holding custom objects

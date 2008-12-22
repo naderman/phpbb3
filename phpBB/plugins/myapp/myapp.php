@@ -26,7 +26,7 @@ class phpbb_myapp_info implements phpbb_plugin_info
 		$object->register_includes('functions', 'core_system', 'core_url');
 
 		// Define the plugins/classes registered within the setup process
-		$object->register_plugins('phpbb_core_system', 'phpbb_core_security');
+		$object->register_plugins('phpbb_myapp_system', 'phpbb_myapp_security');
 
 		// Add one simple hook...
 		// First parameter is the function to hook into, second the own function called then, third a constant defining the hook
@@ -38,12 +38,13 @@ class phpbb_myapp_info implements phpbb_plugin_info
 		$object->register_function('page_header', 'my_page_header_login', phpbb::FUNCTION_INJECT, 'login_logout');
 	}
 
-	function install()
+	function init()
 	{
-	}
+		// Extend acm
+		phpbb::$acm->cache_types['myext'] = NULL;
+		phpbb::$acm->register('myext');
 
-	function uninstall()
-	{
+		phpbb::$acm->put_myext('sometest', array('here' => 1));
 	}
 }
 

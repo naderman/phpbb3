@@ -133,22 +133,13 @@ phpbb::register('acl');
 // Register user object
 phpbb::register('user', false, false, phpbb::$config['auth_method']);
 
-/* Add own hook handler, if present. :o
-phpbb::register('hooks');
+// Within the user-facing files we call: phpbb::$user->start();
 
-foreach (phpbb_cache::obtain_hooks() as $hook)
-{
-	@include(PHPBB_ROOT_PATH . 'includes/hooks/' . $hook . '.' . PHP_EXT);
-}*/
-
-// Within the user-facing files we call:
-//phpbb::$user->start();
+// Register API
+phpbb::register('api');
 
 // Register Plugins
 phpbb::$plugins->init(PHPBB_ROOT_PATH . 'plugins/');
 phpbb::$plugins->setup();
-
-// Register API
-phpbb::register('api');
 
 ?>

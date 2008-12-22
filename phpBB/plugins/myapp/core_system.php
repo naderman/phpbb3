@@ -1,6 +1,6 @@
 <?php
 
-class phpbb_core_system implements phpbb_plugin_setup
+class phpbb_myapp_system implements phpbb_plugin_setup
 {
 	public $phpbb_plugin = 'system';
 
@@ -31,7 +31,7 @@ class phpbb_core_system implements phpbb_plugin_setup
 	}
 }
 
-class phpbb_core_security implements phpbb_plugin_setup
+class phpbb_myapp_security implements phpbb_plugin_setup
 {
 	var $phpbb_plugin = 'security';
 	var $x = 1;

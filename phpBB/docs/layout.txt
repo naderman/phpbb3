@@ -1,8 +1,3 @@
-@todo
-	Are plugins and hooks really that different? At the moment plugins are quite independant, the class name is irrelevant and the definition is done by the coder.
-	Think about where hooks fit and if plugins are the new hooks (but then of course not named plugin but hook). The architecture would allow mod authors to use it too.
-	If this can be done, think about a more sophisticated method to plug them in with simple calls OR document every case and document every special case (override != override)
-
 /**
 * General development pardigm used
 */
@@ -10,10 +5,10 @@
 Our important "global" objects are realized through singletons (objects initialized once). To overcome the need for globals all objects are called with the abstract phpbb.
 Every object defines two public vars, named $phpbb_required and $phpbb_optional. Both list objects required or being optional. This allows us to do proper unit tests.
 The unit test writer itself is able to do two things. (1) directly grab the dependencies of the object and therefore instantly knows what is expected and (2) able to instatiate them on his own through phpbb::register/unregister.
-If an object is needed which is not referenced through phpbb:: then the constructor will ask for it. This way we overcome problems with dependencies and do not instantiate within the constructor or init() call.
+If an object is needed which is not referenced through phpbb:: then the constructor may ask for it.
 
 Ideas:	- We check for the presence of required objects within the objects constructor.
-	- Because we list required and optional objects we could check them automatically while registering them
+	- Because we list required and optional objects we could check them automatically while registering them. If we do this we need to separate between "essential" dependencies and those objects only needed for certain operations.
 
 /**
 * REGISTER order if common.php included
@@ -24,7 +19,6 @@ Ideas:	- We check for the presence of required objects within the objects constr
 /core/security/
 /core/url/
 /core/system/
-/core/plugins/*
 -> message handler assigned
 -> super globals disabled
 /db/dbal/
@@ -36,6 +30,8 @@ Ideas:	- We check for the presence of required objects within the objects constr
 /user/
 	-> /classes/session/
 /api/
+/plugins/init
+/plugins/setup
 
 /**
 * REFERENCES
@@ -95,8 +91,6 @@ Ideas:	- We check for the presence of required objects within the objects constr
 	bootstrap.php: This file is called from common.php and initializes the phpBB Core
 	core.php: Main file defining:
 		phpbb abstract
-		phpbb_plugin_support abstract
-		phpbb_plugin interface
 		SPL autoload function
 
 	Pre-defined core files:
@@ -109,114 +103,8 @@ Ideas:	- We check for the presence of required objects within the objects constr
 		system.php		phpbb_system			No			Yes				get system host with phpbb::$user->system['host'], phpbb::get('system')->get_host() internally
 		url.php			phpbb_url			No			Yes				phpbb::$url
 
-	Files residing in the subdirectory plugins/ and prefixed with core_:
-		These files are custom files loaded after the main pre-defined core files. They have special rules and different names.
-		They allow for registering own objects defined, allow to plug in to core classes as well as overriding core class methods (only if the relevant methods support this)
-
-		Naming schema:
-			- Prefix files with core_
-			- The filename should match the class name used
-			- The class name must be prefixed with phpbb_core_
-			- A file called core_example.php defines a class phpbb_core_example
-			- A file called core_system_mymod.php defines a class phpbb_core_system_mymod with the intention to plug into phpbb_system
-			- The class must define a public var $phpbb_plugin defining the phpBB file the class want to modify
-
-		Using the plugin methods:
-
-		A class defined in plugins is able to plug into the core files, defining additional methods, attributes or overriding methods and attributes.
-
-		- It is always possible to define new methods
-		- It is always possible to define new attributes
-		- It is always possible to override public attributes
-		- Overriding methods is only possible for methods supporting this
-		- Calling code at the end of a method is only possible for methods supporting this
-		- It is not possible to override private or protected methods
-		- It is not possible to override private or protected methods
-
-		Pluggable core files/methods:
-
-			File		Class			Object				Methods (Override)	Methods (Plug code to the end)
-			security.php	phpbb_security		phpbb::$security		gen_rand_string()	gen_rand_string()
-												unique_id()		unique_id()
-												hash_password()		hash_password()
-												check_password()	check_password()
-												hash_link()		hash_link()
-												check_link()		check_link()
-												add_form_key()		add_form_key()
-												check_form_key()	check_form_key()
-
-			system.php	phpbb_system		phpbb::$system						get_page()
-
-			url.php		phpbb_url		phpbb::$url			get()			get()
-												append_sid()
-												-> prepared data: url, parameter, session_id, append_url, anchor, amp_delim, url_delim
-															meta_refresh()
-
-
-		Example use-case:
-
-			- You want to get additional system variables for your application, for example the PATH environment variable.
-			- Additionally, you want to add a new key to the page array returned by get_page().
-			- Drop in a file: /includes/core/plugins/core_system.php
-			- The file contents should look like:
-
-			[code]
-			<?php
-			if (!defined('IN_PHPBB'))
-			{
-				exit();
-			}
-
-			// We must implement the interface phpbb_plugin
-			class phpbb_core_system implements phpbb_plugin
-			{
-				// We want to plug into/modify phpbb_system
-				public $phpbb_plugin = 'system';
-
-				// We need to define this method to tell phpBB which methods/attributes we want to modify/add
-				public function register_plugin(phpbb_plugin_support $object)
-				{
-					// We register a new method... get_path()
-					$object->register_method('get_path', $this);
-
-					// We append a method to an existing method
-					$object->register_append('get_page', $this);
-				}
-
-				/**
-				* Get PATH environment variable
-				*/
-				public function get_path()
-				{
-					// Return PATH
-					return (!empty($_SERVER['PATH'])) ? $_SERVER['PATH'] : getenv('PATH');
-				}
-
-				/**
-				* Add new key at the end of page. The method takes the object as argument and the function arguments as additional arguments
-				*/
-				public function get_page(phpbb_system $object, $page_array)
-				{
-					$page_array['application_path'] = '/var/www/customer/';
-					return $page_array;
-				}
-			}
-
-			// This call is required, $plugin can also be an array defining more than one object
-			$plugin = new phpbb_core_system();
-			?>
-			[/code]
-
-			- access your PATH environment variable through phpbb::$user->system['path'];
-			- access the new page key through phpbb::$user->system['page']['application_path'];
-
-			Possible calls within register_plugin():
-				-> register_method($name, $object): Register a new method or override an existing method. $name is the name of the method, $object is $this
-				-> register_attribute($name, $object): Register a new attribute. $name is the name of the attribute, $object is $this
-				-> register_append($name, $object): Register a new method to be called after an implemented method. $name is the name of the method (must match the injected name). $object is $this
 
 /includes/api/ - API Files
-
 
 *Other PHP source directories*
 
@@ -230,7 +118,7 @@ Ideas:	- We check for the presence of required objects within the objects constr
 /includes/auth/ - Authentication System (Not Finished)
 /includes/bbcode/ - BBCode System (Not Finished)
 /includes/captcha/ - Captcha System (Not Finished)
-/includes/db/ - DBAL
+/includes/db/ - DBAL (Not Finished)
 /includes/diff/ - Diff Engine (Not Finished)
 /includes/hooks/ - Hook System (Not Finished)
 /includes/search/ - Search System (Not Finished)
@@ -296,7 +184,7 @@ Ideas:	- We check for the presence of required objects within the objects constr
 
 *Special directories*
 
-/plugins (is /modules better? At the moment it describes them better): Directory holding directories/files for the defined module sections.
+/modules/ Directory holding directories/files for the defined module sections.
 
 	ucp/: The user control panel.
 	ucp/info/: Information Files for the user control panel.
@@ -339,6 +227,171 @@ Ideas:	- We check for the presence of required objects within the objects constr
 
 	A main module file usually defines several sections for the menu used or the main module used. To be able to separate several functionalities there is a way to define more classes connected to the main module.
 
+/plugins/ - Plugins for phpBB
+
+Rules:
+	- Plugins must define one directory in /plugins/
+	- This directory must contain a file named like the directory with the information about the plugins structure, installation and uninstallation routines
+	- Plugins could consist of any additional files or directories
+
+Sample Layout:
+	- Plugin setup file: /plugins/myapp/myapp.php
+	- Additional files /plugins/myapp/functions.php, /plugins/myapp/core_system.php
+
+	- The plugin should add a new method to the core_system class to get the PATH environment variable
+	- The plugin should add a new key to the systems page array for the application path
+	- The plugin should also inject the exit_handler to finish it's work
+
+Setup File:
+
+Legend:	[name]: This is the directory name used (here: myapp)
+	[class]: phpBB class name to plug in
+
+Class Name: phpbb_[name]_info implements phpbb_plugin_info
+Public Vars: $name, $description, $author, $version
+Functions: public function setup_plugin(phpbb_plugins $object): Setup the plugin
+Optional Functions: public function init(): Can contain code executed after plugin setup
+
+Possible calls within setup routine:
+
+register_includes():	Defines the files phpBB should include. File names are passed as arguments.
+register_plugins():	Defines the class names defining plugins, must follow the following name rule: phpbb_[name]_[class]. Classes are passed as arguments.
+register_function():	Defines the functions to inject hooks into.
+	$function_name:	The function name to inject into.
+	$hook_name:	The hooks function name. If it is a method, please use array(object, method)
+	$mode:		The mode to use, possible modes are:
+		FUNCTION_OVERRIDE:	Overrides the function with the hook and returns result
+		FUNCTION_INJECT:	Inject hook into function with specified $action
+	$action:	The action to use. Default actions are:
+		'default':	This is the default action used for the first hook called, usually at the start of the function.
+		'return':	This is the action used to specify the hook used at the end of the function. Returns the result.
+			For other actions possible have a look at the plugin documentation.
+
+Example:
+
+[code]
+class phpbb_myapp_info implements phpbb_plugin_info
+{
+	public $name = 'My Application';
+	public $description = 'Description';
+	public $author = 'Meik Sievertsen';
+	public $version = '1.0.0';
+
+	function setup_plugin(phpbb_plugins $object)
+	{
+		// Define common files included by default
+		$object->register_includes('functions', 'core_system');
+
+		// Define the plugins/classes registered within the setup process
+		$object->register_plugins('phpbb_myapp_system', 'phpbb_myapp_security');
+
+		// Add one simple hook...
+		$object->register_function('page_header', 'my_page_header_prefix', phpbb::FUNCTION_INJECT, 'default');
+		$object->register_function('page_header', 'my_page_header_login', phpbb::FUNCTION_INJECT, 'login_logout');
+	}
+
+	function init()
+	{
+		// Extend acm with own cache type
+		phpbb::$acm->cache_types['myext'] = NULL;
+		phpbb::$acm->register('myext');
+
+		phpbb::$acm->put_myext('sometest', array('here' => 1));
+	}
+}
+[/code]
+
+Plugin File:
+
+The plugin file defines one or more plugins and need to follow the following rules:
+
+Legend:	[name]: This is the directory name used (here: myapp)
+	[class]: phpBB class name to plug in
+	hook: This is a synonym we use for classifying the plugins method
+
+Class Name: phpbb_[name]_[class] implements phpbb_plugin_setup
+Public Vars:
+	$phpbb_plugin:	Used if you need to plug into a phpBB Class
+	$class_plugin:	Used if you need to plug into any other class
+Functions: public function setup_plugin(phpbb_plugin_support $object): Setup the plugin
+
+Possible calls within setup routine:
+
+register_attribute():	Register a new attribute. First parameter is the attribute name, second is $this. If the attribute already exists within the original class then it will be overwritten.
+register_method():	Register a new method (hook), overrides one or inject into one.
+	$method_name:	The method name to inject into. False if a new method is registered.
+	$hook_name:	The hook name to use.
+	$this:		Always $this
+	$mode:		The mode to use, possible modes are:
+		METHOD_ADD:		Add the method (hook). First parameter should be false too.
+		METHOD_OVERRIDE:	Overrides the method with the hook and returns result
+		METHOD_INJECT:		Inject hook into method with specified $action
+	$action:	The action to use. Default actions are:
+		'default':	This is the default action used for the first hook called, usually at the start of the method.
+		'return':	This is the action used to specify the hook used at the end of the function. Returns the result.
+			For other possible actions refer to the plugin documentation.
+
+Example:
+[code]
+class phpbb_myapp_system implements phpbb_plugin_setup
+{
+	public $phpbb_plugin = 'system';
+
+	public function setup_plugin(phpbb_plugin_support $object)
+	{
+		$object->register_method(false, 'get_path', $this);
+		$object->register_method('get_page', 'get_page', $this, phpbb::PLUGIN_INJECT, 'return');
+	}
+
+	/**
+	* Get PATH environment variable
+	*/
+	public function get_path(phpbb_system $object)
+	{
+		// Return PATH
+		return (!empty($_SERVER['PATH'])) ? $_SERVER['PATH'] : getenv('PATH');
+	}
+
+	public function get_page(phpbb_system $object, $result)
+	{
+		$result['application_path'] = '/var/www/customer/';
+		return $result;
+	}
+}
+
+class phpbb_myapp_security implements phpbb_plugin_setup
+{
+	var $phpbb_plugin = 'security';
+	var $x = 1;
+
+	function setup_plugin(phpbb_plugin_support $object)
+	{
+		$object->register_method(false, 'test', $this);
+		$object->register_method('unique_id', 'unique_id', $this, phpbb::PLUGIN_OVERRIDE);
+
+		$object->register_attribute('x', $this);
+		$object->register_attribute('hash_type', $this);
+
+		$object->register_method('gen_rand_string', 'gen_rand_string', $this, phpbb::PLUGIN_INJECT);
+	}
+
+	public function test(phpbb_security $object)
+	{
+		echo 'test';
+		print_r($object);
+	}
+
+	public function gen_rand_string(phpbb_security $object, $num_chars)
+	{
+		$num_chars = 7;
+	}
+
+	public function unique_id(phpbb_security $object)
+	{
+		return md5('tst');
+	}
+}
+[/code]
 
 
 *Standard directories*
@@ -384,23 +437,6 @@ Other pre-defined logical directories:
 	memberlist/: Memberlist relevant files
 	search/: Files for teh search plugins
 
-/**
-Plugin documentation:
-
-Rules:
-	- Plugins must define one directory in /plugins/
-	- This directory must contain a file bootstrap.php with the information about the plugins structure, installation and uninstallation routines
-	- Plugins could consist of any additional files or directories
-
-Sample Layout:
-	- Plugin setup file: /plugins/plugin_myapp.php
-	- Additional directory /plugins/myapp/
-	- Additional files /plugins/myapp/functions.php, /plugins/myapp/core_system.php, /plugins/myapp/core_url.php
-	- The plugin should add a new method to the core_system class to get the PATH environment variable
-	- The plugin should add a new key to the systems page array for the application path
-	- The plugin should change the output of URL's in phpBB and transform them to human readable URL's
-	- The plugin should also inject the exit_handler to finish it's work
-*/
 
 /**
 Modules documentation:

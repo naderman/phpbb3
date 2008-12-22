@@ -19,7 +19,7 @@ if (!defined('IN_PHPBB'))
 class phpbb_acm_file extends phpbb_acm_abstract
 {
 	public $cache_dir = '';
-	public $supported = array('data' => true, 'sql' => true);
+	public $supported = true; // acm_file must support all types
 
 	/**
 	* Set cache path
