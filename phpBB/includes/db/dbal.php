@@ -16,6 +16,31 @@ if (!defined('IN_PHPBB'))
 	exit;
 }
 
+abstract class phpbb_dbal_factory
+{
+	public static function factory($dbms, $sqlserver, $sqluser, $sqlpassword, $database, $port = false, $persistency = false, $new_link = false)
+	{
+		$class = 'phpbb_dbal_' . $dbms;
+
+		if (!class_exists($class))
+		{
+			include PHPBB_ROOT_PATH . 'includes/db/' . $dbms . '.' . PHP_EXT;
+		}
+
+		// Instantiate class
+		$db = new $class();
+
+		// Fill default sql layer
+		$db->sql_layer = $dbms;
+
+		// Connect to DB
+		$db->sql_connect($sqlserver, $sqluser, $sqlpassword, $database, $port, $persistency, $new_link);
+
+		// Return db object
+		return $db;
+	}
+}
+
 /**
 * Database Abstraction Layer
 * @package dbal
@@ -98,10 +123,6 @@ class phpbb_dbal
 			'normal'		=> 0,
 			'total'			=> 0,
 		);
-
-		// Fill default sql layer based on the class being called.
-		// This can be changed by the specified layer itself later if needed.
-		$this->sql_layer = substr(get_class($this), 11);
 
 		// Do not change this please! This variable is used to easy the use of it - and is hardcoded.
 		$this->any_char = chr(0) . '%';

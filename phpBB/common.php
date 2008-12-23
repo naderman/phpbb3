@@ -71,10 +71,10 @@ request::disable_super_globals();
 if (!empty($dbms))
 {
 	// Register DB object. Custom class is dbal_$dbms, custom files are includes/db/dbal.php and includes/db/$dbms.php
-	phpbb::register('db', 'phpbb_dbal_' . basename($dbms), array('db/dbal', 'db/' . $dbms));
+	phpbb::register_factory('db', 'phpbb_dbal', 'db/dbal', $dbms, $dbhost, $dbuser, $dbpasswd, $dbname, $dbport, false, defined('PHPBB_DB_NEW_LINK') ? PHPBB_DB_NEW_LINK : false);
 
 	// Connect to DB
-	phpbb::$db->sql_connect($dbhost, $dbuser, $dbpasswd, $dbname, $dbport, false, defined('PHPBB_DB_NEW_LINK') ? PHPBB_DB_NEW_LINK : false);
+//	phpbb::$db->sql_connect($dbhost, $dbuser, $dbpasswd, $dbname, $dbport, false, defined('PHPBB_DB_NEW_LINK') ? PHPBB_DB_NEW_LINK : false);
 }
 
 // We do not need the db password any longer, unset for safety purposes

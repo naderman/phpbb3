@@ -129,6 +129,18 @@ abstract class phpbb
 		return self::$instances[$variable];
 	}
 
+	public static function register_factory($variable, $class = false, $includes = false)
+	{
+		$args = (func_num_args() > 3) ? array_slice(func_get_args(), 3) : array();
+		return self::_register($variable, 'factory', $class, $includes, $args);
+	}
+
+	public static function register($variable, $class = false, $includes = false)
+	{
+		$args = (func_num_args() > 3) ? array_slice(func_get_args(), 3) : array();
+		return self::_register($variable, 'object', $class, $includes, $args);
+	}
+
 	/**
 	* Register new class/object.
 	* Any additional parameter will be forwarded to the class instantiation. Assigned classes need to be instantiated.
@@ -139,15 +151,15 @@ abstract class phpbb
 	*
 	* @return mixed The instance of the created object.
 	*/
-	public static function register($variable, $class = false, $includes = false)
+	public static function _register($variable, $mode, $class, $includes, $arguments)
 	{
 		if (self::registered($variable))
 		{
 			return self::get_instance($variable);
 		}
 
-		$args = (func_num_args() > 3) ? array_slice(func_get_args(), 3) : array();
 		$class = ($class === false) ? 'phpbb_' . $variable : $class;
+		$class .= ($mode == 'factory') ? '_factory' : '';
 
 		if ($includes !== false)
 		{
@@ -162,20 +174,34 @@ abstract class phpbb
 			}
 		}
 
-		$reflection = new ReflectionClass($class);
-
-		if (!$reflection->isInstantiable())
+		if ($mode == 'factory')
 		{
-			throw new Exception('Assigned classes need to be instantiated.');
-		}
-
-		if (!property_exists('phpbb', $variable))
-		{
-			self::$instances[$variable] = (sizeof($args)) ? call_user_func_array(array($reflection, 'newInstance'), $args) : $reflection->newInstance();
+			if (!property_exists('phpbb', $variable))
+			{
+				self::$instances[$variable] = call_user_func_array(array($class, 'factory'), $arguments);;
+			}
+			else
+			{
+				self::$$variable = call_user_func_array(array($class, 'factory'), $arguments);
+			}
 		}
 		else
 		{
-			self::$$variable = (sizeof($args)) ? call_user_func_array(array($reflection, 'newInstance'), $args) : $reflection->newInstance();
+			$reflection = new ReflectionClass($class);
+
+			if (!$reflection->isInstantiable())
+			{
+				throw new Exception('Assigned classes need to be instantiated.');
+			}
+
+			if (!property_exists('phpbb', $variable))
+			{
+				self::$instances[$variable] = (sizeof($arguments)) ? call_user_func_array(array($reflection, 'newInstance'), $arguments) : $reflection->newInstance();
+			}
+			else
+			{
+				self::$$variable = (sizeof($arguments)) ? call_user_func_array(array($reflection, 'newInstance'), $arguments) : $reflection->newInstance();
+			}
 		}
 
 		return self::get_instance($variable);
