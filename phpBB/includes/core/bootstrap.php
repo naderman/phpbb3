@@ -23,76 +23,55 @@ $starttime = $starttime[1] + $starttime[0];
 error_reporting(E_ALL | E_STRICT); //  ^ E_NOTICE
 date_default_timezone_set('UTC');
 
-// Define missing Framework states...
-if (!defined('PHPBB_FRAMEWORK_FULL') && !defined('PHPBB_FRAMEWORK_SAFE'))
-{
-	define('PHPBB_FRAMEWORK_FULL', true);
-	define('PHPBB_FRAMEWORK_SAFE', false);
-}
-else
-{
-	(!defined('PHPBB_FRAMEWORK_FULL')) ? define('PHPBB_FRAMEWORK_FULL', false) : define('PHPBB_FRAMEWORK_SAFE', false);
-}
-
 // Initialize some standard variables, constants and classes we need
-include PHPBB_ROOT_PATH . 'includes/core/core.' . PHP_EXT;
-include PHPBB_ROOT_PATH . 'plugins/bootstrap.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'includes/core/core.' . PHP_EXT;
+require_once PHPBB_ROOT_PATH . 'plugins/bootstrap.' . PHP_EXT;
 
-// If we are on PHP >= 6.0.0 we do not need some code
-if (version_compare(PHP_VERSION, '6.0.0-dev', '>='))
+if (!defined('STRIP'))
 {
-	/**
-	* @ignore
-	*/
-	define('STRIP', false);
-}
-else
-{
-	@set_magic_quotes_runtime(0);
-
-	// Be paranoid with passed vars
-	if (@ini_get('register_globals') == '1' || strtolower(@ini_get('register_globals')) == 'on' || !function_exists('ini_get'))
+	// If we are on PHP >= 6.0.0 we do not need some code
+	if (version_compare(PHP_VERSION, '6.0.0-dev', '>='))
 	{
-		die('phpBB will not work with register globals turned on. Please turn register globals off.');
-	}
-
-	define('STRIP', (@get_magic_quotes_gpc()) ? true : false);
-}
-
-// In Full Mode, we check for the cron script and include the config file
-if (PHPBB_FRAMEWORK_FULL)
-{
-	if (defined('IN_CRON'))
-	{
-		@define('PHPBB_ROOT_PATH', dirname(__FILE__) . DIRECTORY_SEPARATOR);
-	}
-
-	if (!file_exists(PHPBB_ROOT_PATH . 'config.' . PHP_EXT))
-	{
-		die('<p>The config.' . PHP_EXT . ' file could not be found.</p><p><a href="' . PHPBB_ROOT_PATH . 'install/index.' . PHP_EXT . '">Click here to install phpBB</a></p>');
-	}
-
-	require(PHPBB_ROOT_PATH . 'config.' . PHP_EXT);
-}
-
-// In safemode, we need to have some standard values
-if (PHPBB_FRAMEWORK_SAFE)
-{
-	if (!file_exists(PHPBB_ROOT_PATH . 'config.' . PHP_EXT))
-	{
-		define('CONFIG_ADM_FOLDER', 'adm');
-		define('CONFIG_ACM_TYPE', 'file');
+		/**
+		* @ignore
+		*/
+		define('STRIP', false);
 	}
 	else
 	{
-		require PHPBB_ROOT_PATH . 'config.' . PHP_EXT;
-	}
+		@set_magic_quotes_runtime(0);
 
-	if (!defined('PHPBB_INSTALLED'))
-	{
-		$dbms = $dbhost = $dbport = $dbname = $dbuser = $dbpasswd = '';
-		$table_prefix = 'phpbb_';
+		// Be paranoid with passed vars
+		if (@ini_get('register_globals') == '1' || strtolower(@ini_get('register_globals')) == 'on' || !function_exists('ini_get'))
+		{
+			die('phpBB will not work with register globals turned on. Please turn register globals off.');
+		}
+
+		define('STRIP', (@get_magic_quotes_gpc()) ? true : false);
 	}
+}
+
+// In Full Mode, we check for the cron script and include the config file
+if (defined('IN_CRON'))
+{
+	@define('PHPBB_ROOT_PATH', dirname(__FILE__) . DIRECTORY_SEPARATOR);
+}
+
+if (!file_exists(PHPBB_ROOT_PATH . 'config.' . PHP_EXT))
+{
+	define('CONFIG_ADM_FOLDER', 'adm');
+	define('CONFIG_ACM_TYPE', 'file');
+	define('PHPBB_CONFIG_MISSING', true);
+}
+else
+{
+	require PHPBB_ROOT_PATH . 'config.' . PHP_EXT;
+}
+
+if (!defined('PHPBB_INSTALLED'))
+{
+	$dbms = $dbhost = $dbport = $dbname = $dbuser = $dbpasswd = '';
+	$table_prefix = 'phpbb_';
 }
 
 if (defined('DEBUG_EXTRA'))

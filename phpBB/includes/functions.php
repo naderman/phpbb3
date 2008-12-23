@@ -1988,8 +1988,11 @@ function msg_handler($errno, $msg_text, $errfile, $errline)
 				}
 
 				// remove complete path to installation, with the risk of changing backslashes meant to be there
-				$errfile = str_replace(array(phpbb::$url->realpath(PHPBB_ROOT_PATH), '\\'), array('', '/'), $errfile);
-				$msg_text = str_replace(array(phpbb::$url->realpath(PHPBB_ROOT_PATH), '\\'), array('', '/'), $msg_text);
+				if (phpbb::registered('url'))
+				{
+					$errfile = str_replace(array(phpbb::$url->realpath(PHPBB_ROOT_PATH), '\\'), array('', '/'), $errfile);
+					$msg_text = str_replace(array(phpbb::$url->realpath(PHPBB_ROOT_PATH), '\\'), array('', '/'), $msg_text);
+				}
 
 				echo '<b>[phpBB Debug] PHP Notice</b>: in file <b>' . $errfile . '</b> on line <b>' . $errline . '</b>: <b>' . $msg_text . '</b><br />' . "\n";
 			}

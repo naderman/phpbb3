@@ -22,7 +22,7 @@ class phpbb_myapp_info implements phpbb_plugin_info
 
 	function setup_plugin(phpbb_plugins $object)
 	{
-		// Define common files included by default
+		// Define common files included by default. They are only included once... please do not add any procedural code to them.
 		$object->register_includes('functions', 'core_system', 'core_url');
 
 		// Define the plugins/classes registered within the setup process

@@ -223,6 +223,25 @@ abstract class phpbb
 			self::$$variable = NULL;
 		}
 	}
+
+	/**
+	* Function to return to a clean state, unregistering everything.
+	* Helpful for unit tests
+	*/
+	public static function reset()
+	{
+		foreach (self::$instances as $variable => $null)
+		{
+		}
+
+		$class_vars = array('template', 'user', 'db', 'acm', 'acl', 'plugins', 'url', 'security', 'api', 'config');
+		$class_vars = array_merge(array_keys(self::$instances), $class_vars);
+
+		foreach ($class_vars as $variable)
+		{
+			self::unregister($variable);
+		}
+	}
 }
 
 /**
@@ -263,7 +282,7 @@ function __phpbb_autoload($class_name)
 	{
 		if (file_exists(PHPBB_ROOT_PATH . $filename . '.' . PHP_EXT))
 		{
-			require_once PHPBB_ROOT_PATH . $filename . '.' . PHP_EXT;
+			include PHPBB_ROOT_PATH . $filename . '.' . PHP_EXT;
 			return;
 		}
 	}

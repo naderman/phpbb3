@@ -91,7 +91,7 @@ class phpbb_plugins
 			// Add includes
 			foreach ($plugin->includes as $file)
 			{
-				include $this->plugin_path . $name . '/' . $file . '.' . PHP_EXT;
+				include_once $this->plugin_path . $name . '/' . $file . '.' . PHP_EXT;
 			}
 
 			// Setup objects
