@@ -303,7 +303,16 @@ class phpbb_myapp_info implements phpbb_plugin_info
 
 Plugin File:
 
-The plugin file defines one or more plugins and need to follow the following rules:
+The plugin file defines one or more plugins and need to follow some rules.
+
+	- It is always possible to define new methods
+	- It is always possible to define new attributes
+	- It is always possible to override public attributes
+	- Overriding methods is only possible for methods supporting this
+	- Calling code at the beginning/end of a method is only possible for methods supporting this
+	- Calling special actions of a method is only possible for methods implementing this action
+	- It is not possible to override private or protected methods
+	- It is not possible to override private or protected attributes
 
 Legend:	[name]: This is the directory name used (here: myapp)
 	[class]: phpBB class name to plug in
@@ -392,6 +401,40 @@ class phpbb_myapp_security implements phpbb_plugin_setup
 	}
 }
 [/code]
+
+Pluggable functions:
+
+	File				Function		Override		Actions			Parameter
+	includes/functions.php		page_header()		Yes						$page_title, $display_online_list
+											'default'		&$page_title, &$display_online_list
+											'return'		
+
+
+Pluggable core methods:
+
+File		Class			Object			
+security.php	phpbb_security		phpbb::$security
+
+
+	Method				Override		Actions		Parameter
+	gen_rand_string()		Yes					$num_chars
+								'default'	&$num_chars
+								'return'	$result, $num_chars
+
+	
+system.php	phpbb_system		phpbb::$system
+
+	Method				Override		Actions		Parameter
+	get_page()			No			'return'	$page_array
+
+
+url.php		phpbb_url		phpbb::$url
+
+	Method				Override		Actions		Parameter
+	append_sid()			No			'default'	&$url, &$params, &$session_id, &$append_url, &$anchor, &$amp_delim, &$url_delim
+								'return'	$url, $params, $session_id, $append_url, $anchor, $amp_delim, $url_delim 
+
+	meta_refresh()			No			'return'	$result_url, $time, $url, $disable_cd_check
 
 
 *Standard directories*

@@ -316,12 +316,13 @@ class phpbb_url extends phpbb_plugin_support
 		// Appending custom url parameter?
 		$append_url = (!empty(phpbb::$user->extra_url)) ? implode($amp_delim, phpbb::$user->extra_url) : '';
 
-/*		if ($this->plugin_override(__FUNCTION__))
+		if ($this->method_inject(__FUNCTION__)) $this->call_inject(__FUNCTION__, array('default', &$url, &$params, &$session_id, &$append_url, &$anchor, &$amp_delim, &$url_delim));
+
+		if ($this->method_inject(__FUNCTION__, 'return'))
 		{
-			// For the invocation we use prepared data
-			$url = $this->call_override(__FUNCTION__, array($url, $params, $session_id, $append_url, $anchor, $amp_delim, $url_delim));
+			$url = $this->call_inject(__FUNCTION__, array('return', $url, $params, $session_id, $append_url, $anchor, $amp_delim, $url_delim));
 			return $this->get($url);
-		}*/
+		}
 
 		// Use the short variant if possible ;)
 		if ($params === false)
@@ -677,7 +678,7 @@ class phpbb_url extends phpbb_plugin_support
 			$this->redirect($url, false, $disable_cd_check);
 		}
 
-		return ($this->plugin_append(__FUNCTION__)) ? $this->plugin_append_call(__FUNCTION__, $result_url, $time, $url, $disable_cd_check) : $result_url;
+		return ($this->method_inject(__FUNCTION__, 'return')) ? $this->call_inject(__FUNCTION__, array('return', $result_url, $time, $url, $disable_cd_check)) : $result_url;
 	}
 }
 
