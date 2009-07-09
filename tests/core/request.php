@@ -28,7 +28,11 @@ class phpbb_core_request_test extends phpbb_test_case
 
 	public function test_toggle_super_globals()
 	{
+		$this->assertTrue($this->request->super_globals_disabled(), 'Superglobals were not disabled');
+
 		$this->request->enable_super_globals();
+
+		$this->assertFalse($this->request->super_globals_disabled(), 'Superglobals were not enabled');
 
 		$this->assertEquals(1, $_POST['test'], 'Checking $_POST after enable_super_globals');
 		$this->assertEquals(2, $_GET['test'], 'Checking $_GET after enable_super_globals');
@@ -53,6 +57,23 @@ class phpbb_core_request_test extends phpbb_test_case
 	{
 		$this->assertTrue($this->request->is_set_post('test'));
 		$this->assertFalse($this->request->is_set_post('unset'));
+	}
+
+	public function test_addslashes_recursively()
+	{
+		$data = array('some"string' => array('that"' => 'really"', 'needs"' => '"escaping'));
+		$expected = array('some\\"string' => array('that\\"' => 'really\\"', 'needs\\"' => '\\"escaping'));
+
+		phpbb_request::addslashes_recursively($data);
+
+		$this->assertEquals($expected, $data);
+	}
+
+	public function test_variable_names()
+	{
+		$expected = array('test', 'unset');
+		$result = $this->request->variable_names()
+		$this->assertEquals($expected, $result);
 	}
 
 	/**

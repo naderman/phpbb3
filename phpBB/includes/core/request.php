@@ -251,7 +251,7 @@ class phpbb_request
 	*
 	* @param mixed	&$var	Variable passed by reference to which slashes will be added.
 	*/
-	protected static function addslashes_recursively(&$var)
+	public static function addslashes_recursively(&$var)
 	{
 		if (is_string($var))
 		{
@@ -260,12 +260,15 @@ class phpbb_request
 		else if (is_array($var))
 		{
 			$var_copy = $var;
+			$var = array();
 			foreach ($var_copy as $key => $value)
 			{
 				if (is_string($key))
 				{
 					$key = addslashes($key);
 				}
+				$var[$key] = $value;
+
 				self::addslashes_recursively($var[$key]);
 			}
 		}
@@ -329,14 +332,14 @@ class phpbb_request
 	* @param bool	$multibyte	Indicates whether string values may contain UTF-8 characters.
 	* 							Default is false, causing all bytes outside the ASCII range (0-127) to be replaced with question marks.
 	*/
-	public static function set_var(&$result, $var, $type, $multibyte = false)
+	public function set_var(&$result, $var, $type, $multibyte = false)
 	{
 		settype($var, $type);
 		$result = $var;
 
 		if ($type == 'string')
 		{
-			$result = trim(utf8_htmlspecialchars(str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $result)));
+			$result = trim(htmlspecialchars(str_replace(array("\r\n", "\r", "\0"), array("\n", "\n", ''), $result), ENT_COMPAT, 'UTF-8'));
 
 			if (!empty($result))
 			{
@@ -370,7 +373,7 @@ class phpbb_request
 	* @param bool	$multibyte	Indicates whether string values may contain UTF-8 characters.
 	* 							Default is false, causing all bytes outside the ASCII range (0-127) to be replaced with question marks.
 	*/
-	protected static function recursive_set_var(&$var, $default, $multibyte)
+	protected function recursive_set_var(&$var, $default, $multibyte)
 	{
 		if (is_array($var) !== is_array($default))
 		{
@@ -381,7 +384,7 @@ class phpbb_request
 		if (!is_array($default))
 		{
 			$type = gettype($default);
-			self::set_var($var, $var, $type, $multibyte);
+			$this->set_var($var, $var, $type, $multibyte);
 		}
 		else
 		{
@@ -402,10 +405,10 @@ class phpbb_request
 
 			foreach ($_var as $k => $v)
 			{
-				self::set_var($k, $k, $key_type, $multibyte);
+				$this->set_var($k, $k, $key_type, $multibyte);
 
-				self::recursive_set_var($v, $default_value, $multibyte);
-				self::set_var($var[$k], $v, $value_type, $multibyte);
+				$this->recursive_set_var($v, $default_value, $multibyte);
+				$this->set_var($var[$k], $v, $value_type, $multibyte);
 			}
 		}
 	}
@@ -449,16 +452,6 @@ class phpbb_request
 			return (is_array($default)) ? array() : $default;
 		}
 		$var = $this->input[$super_global][$var_name];
-
-		// make sure cookie does not overwrite get/post
-		if ($super_global != phpbb_request::COOKIE && isset($this->input[phpbb_request::COOKIE][$var_name]))
-		{
-			if (!isset($this->input[phpbb_request::GET][$var_name]) && !isset($this->input[phpbb_request::POST][$var_name]))
-			{
-				return (is_array($default)) ? array() : $default;
-			}
-			$var = isset($this->input[phpbb_request::POST][$var_name]) ? $this->input[phpbb_request::POST][$var_name] : $this->input[phpbb_request::GET][$var_name];
-		}
 
 		if ($path)
 		{

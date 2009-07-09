@@ -19,6 +19,7 @@ require_once 'PHPUnit/TextUI/TestRunner.php';
 
 require_once 'autoload.php';
 require_once 'request.php';
+require_once 'request_casting.php';
 
 class phpbb_core_all_tests
 {
@@ -33,6 +34,7 @@ class phpbb_core_all_tests
 
 		$suite->addTestSuite('phpbb_core_autoload_test');
 		$suite->addTestSuite('phpbb_core_request_test');
+		$suite->addTestSuite('phpbb_core_request_casting_test');
 
 		return $suite;
 	}
