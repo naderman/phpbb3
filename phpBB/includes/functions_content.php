@@ -505,133 +505,6 @@ function generate_text_for_edit($text, $uid, $flags)
 }
 
 /**
-* A subroutine of make_clickable used with preg_replace
-* It places correct HTML around an url, shortens the displayed text
-* and makes sure no entities are inside URLs
-*/
-function make_clickable_callback($type, $whitespace, $url, $relative_url, $class)
-{
-	$orig_url		= $url;
-	$orig_relative	= $relative_url;
-	$append			= '';
-	$url			= htmlspecialchars_decode($url);
-	$relative_url	= htmlspecialchars_decode($relative_url);
-
-	// make sure no HTML entities were matched
-	$chars = array('<', '>', '"');
-	$split = false;
-
-	foreach ($chars as $char)
-	{
-		$next_split = strpos($url, $char);
-		if ($next_split !== false)
-		{
-			$split = ($split !== false) ? min($split, $next_split) : $next_split;
-		}
-	}
-
-	if ($split !== false)
-	{
-		// an HTML entity was found, so the URL has to end before it
-		$append			= substr($url, $split) . $relative_url;
-		$url			= substr($url, 0, $split);
-		$relative_url	= '';
-	}
-	else if ($relative_url)
-	{
-		// same for $relative_url
-		$split = false;
-		foreach ($chars as $char)
-		{
-			$next_split = strpos($relative_url, $char);
-			if ($next_split !== false)
-			{
-				$split = ($split !== false) ? min($split, $next_split) : $next_split;
-			}
-		}
-
-		if ($split !== false)
-		{
-			$append			= substr($relative_url, $split);
-			$relative_url	= substr($relative_url, 0, $split);
-		}
-	}
-
-	// if the last character of the url is a punctuation mark, exclude it from the url
-	$last_char = ($relative_url) ? $relative_url[strlen($relative_url) - 1] : $url[strlen($url) - 1];
-
-	switch ($last_char)
-	{
-		case '.':
-		case '?':
-		case '!':
-		case ':':
-		case ',':
-			$append = $last_char;
-			if ($relative_url)
-			{
-				$relative_url = substr($relative_url, 0, -1);
-			}
-			else
-			{
-				$url = substr($url, 0, -1);
-			}
-		break;
-
-		// set last_char to empty here, so the variable can be used later to
-		// check whether a character was removed
-		default:
-			$last_char = '';
-		break;
-	}
-
-	$short_url = (strlen($url) > 55) ? substr($url, 0, 39) . ' ... ' . substr($url, -10) : $url;
-
-	switch ($type)
-	{
-		case MAGIC_URL_LOCAL:
-			$tag			= 'l';
-			$relative_url	= preg_replace('/[&?]sid=[0-9a-f]{32}$/', '', preg_replace('/([&?])sid=[0-9a-f]{32}&/', '$1', $relative_url));
-			$url			= $url . '/' . $relative_url;
-			$text			= $relative_url;
-
-			// this url goes to http://domain.tld/path/to/board/ which
-			// would result in an empty link if treated as local so
-			// don't touch it and let MAGIC_URL_FULL take care of it.
-			if (!$relative_url)
-			{
-				return $whitespace . $orig_url . '/' . $orig_relative; // slash is taken away by relative url pattern
-			}
-		break;
-
-		case MAGIC_URL_FULL:
-			$tag	= 'm';
-			$text	= $short_url;
-		break;
-
-		case MAGIC_URL_WWW:
-			$tag	= 'w';
-			$url	= 'http://' . $url;
-			$text	= $short_url;
-		break;
-
-		case MAGIC_URL_EMAIL:
-			$tag	= 'e';
-			$text	= $short_url;
-			$url	= 'mailto:' . $url;
-		break;
-	}
-
-	$url	= htmlspecialchars($url);
-	$text	= htmlspecialchars($text);
-	$append	= htmlspecialchars($append);
-
-	$html	= "$whitespace<!-- $tag --><a$class href=\"$url\">$text</a><!-- $tag -->$append";
-
-	return $html;
-}
-
-/**
 * make_clickable function
 *
 * Replace magic urls of form http://xxx.xxx., www.xxx. and xxx@xxx.xxx.
@@ -645,37 +518,9 @@ function make_clickable($text, $server_url = false, $class = 'postlink')
 		$server_url = generate_board_url();
 	}
 
-	static $magic_url_match;
-	static $magic_url_replace;
-	static $static_class;
+	$formatted_text = new phpbb_text_formatting('', $server_url);
 
-	if (!is_array($magic_url_match) || $static_class != $class)
-	{
-		$static_class = $class;
-		$class = ($static_class) ? ' class="' . $static_class . '"' : '';
-		$local_class = ($static_class) ? ' class="' . $static_class . '-local"' : '';
-
-		$magic_url_match = $magic_url_replace = array();
-		// Be sure to not let the matches cross over. ;)
-
-		// relative urls for this board
-		$magic_url_match[] = '#(^|[\n\t (>.])(' . preg_quote($server_url, '#') . ')/(' . get_preg_expression('relative_url_inline') . ')#ie';
-		$magic_url_replace[] = "make_clickable_callback(MAGIC_URL_LOCAL, '\$1', '\$2', '\$3', '$local_class')";
-
-		// matches a xxxx://aaaaa.bbb.cccc. ...
-		$magic_url_match[] = '#(^|[\n\t (>.])(' . get_preg_expression('url_inline') . ')#ie';
-		$magic_url_replace[] = "make_clickable_callback(MAGIC_URL_FULL, '\$1', '\$2', '', '$class')";
-
-		// matches a "www.xxxx.yyyy[/zzzz]" kinda lazy URL thing
-		$magic_url_match[] = '#(^|[\n\t (>])(' . get_preg_expression('www_url_inline') . ')#ie';
-		$magic_url_replace[] = "make_clickable_callback(MAGIC_URL_WWW, '\$1', '\$2', '', '$class')";
-
-		// matches an email@domain type address at the start of a line, or after a space or after what might be a BBCode.
-		$magic_url_match[] = '/(^|[\n\t (>])(' . get_preg_expression('email') . ')/ie';
-		$magic_url_replace[] = "make_clickable_callback(MAGIC_URL_EMAIL, '\$1', '\$2', '', '')";
-	}
-
-	return preg_replace($magic_url_match, $magic_url_replace, $text);
+	return $formatted_text->make_clickable($text, $class);
 }
 
 /**
@@ -1106,8 +951,8 @@ function extension_allowed($forum_id, $extension, &$extensions)
 * @param string $string The text to truncate to the given length. String is specialchared.
 * @param int $max_length Maximum length of string (multibyte character count as 1 char / Html entity count as 1 char)
 * @param int $max_store_length Maximum character length of string (multibyte character count as 1 char / Html entity count as entity chars).
-* @param bool $allow_reply Allow Re: in front of string 
-* 	NOTE: This parameter can cause undesired behavior (returning strings longer than $max_store_legnth) and is deprecated. 
+* @param bool $allow_reply Allow Re: in front of string
+* 	NOTE: This parameter can cause undesired behavior (returning strings longer than $max_store_legnth) and is deprecated.
 * @param string $append String to be appended
 */
 function truncate_string($string, $max_length = 60, $max_store_length = 255, $allow_reply = false, $append = '')
