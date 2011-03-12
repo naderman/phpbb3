@@ -25,7 +25,7 @@ class acp_search
 	var $state;
 	var $search;
 	var $max_post_id;
-	var $batch_size = 100;
+	var $batch_size = 2;
 
 	function main($id, $mode)
 	{
@@ -392,7 +392,21 @@ class acp_search
 									AND post_id <= ' . (int) ($post_counter + $this->batch_size);
 							$result = $db->sql_query($sql);
 
-							while ($row = $db->sql_fetchrow($result))
+							$buffer = $db->sql_buffer_nested_transactions();
+
+							if ($buffer)
+							{
+								$rows = array();
+								while ($row = $db->sql_fetchrow($result))
+								{
+									$rows[] = $row;
+								}
+								$rows[] = false; // indicate end of array for while loop below
+								
+								$db->sql_freeresult($result);
+							}
+
+							while ($row = ($buffer ? $rows[$i++] : $db->sql_fetchrow($result)))
 							{
 								// Indexing enabled for this forum or global announcement?
 								// Global announcements get indexed by default.
@@ -402,7 +416,10 @@ class acp_search
 								}
 								$row_count++;
 							}
-							$db->sql_freeresult($result);
+							if (!$buffer)
+							{
+								$db->sql_freeresult($result);
+							}
 
 							$post_counter += $this->batch_size;
 						}

@@ -257,6 +257,14 @@ class dbal_mssqlnative extends dbal
 
 		return ($this->sql_server_version) ? 'MSSQL<br />' . $this->sql_server_version : 'MSSQL';
 	}
+	
+	/**
+	* {@inheritDoc}
+	*/
+	function sql_buffer_nested_transaction()
+	{
+		return true;
+	}
 
 	/**
 	* SQL Transaction
