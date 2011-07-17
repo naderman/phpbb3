@@ -19,6 +19,7 @@ input {
 }
 
 select {
+	font-size:1em;
 	font-family: Verdana, Helvetica, Arial, sans-serif;
 	font-weight: normal;
 	cursor: pointer;
