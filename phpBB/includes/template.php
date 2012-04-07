@@ -83,6 +83,8 @@ class template
 
 		$this->_rootref = &$this->_tpldata['.'][0];
 
+		$this->initTwig();
+
 		return true;
 	}
 
@@ -124,7 +126,29 @@ class template
 
 		$this->_rootref = &$this->_tpldata['.'][0];
 
+		$this->initTwig();
+
 		return true;
+	}
+
+	public function initTwig()
+	{
+		$this->loader = new Twig_Loader_Filesystem($this->root);
+		$this->twig = new Twig_Environment($this->loader, array(
+			//'cache' => $this->cachepath,
+			'debug' => true,
+			'auto_reload' => true,
+		));
+
+		$lexer = new phpbb_twigextension_lexer($this->twig, array(
+			'tag_comment'  => array('{#', '#}'),
+			'tag_block'    => array('<!-- ', '-->'),
+			'tag_variable' => array('{', '}'),
+		));
+
+		$this->twig->setLexer($lexer);
+
+		$this->twig->addExtension(new phpbb_twigextension);
 	}
 
 	/**
@@ -221,16 +245,25 @@ class template
 			}
 		}
 
-		if ($filename = $this->_tpl_load($handle))
+		/*if ($filename = $this->_tpl_load($handle))
 		{
 			($include_once) ? include_once($filename) : include($filename);
 		}
 		else
 		{
 			eval(' ?>' . $this->compiled_code[$handle] . '<?php ');
-		}
+		}*/
+
+		$this->twig_print_template($this->_tpl_load($handle));
 
 		return true;
+	}
+
+	public function twig_print_template(Twig_TemplateInterface $template)
+	{
+		$this->_rootref['__phpbb_template_instance'] = $this;
+		$this->_rootref['blocks'] = $this->__tpldata;
+		echo $template->render($this->_rootref);
 	}
 
 	/**
@@ -291,6 +324,9 @@ class template
 			$recompile = (@filemtime($filename) < filemtime($this->files[$handle])) ? true : false;
 		}
 
+		$template = $this->twig->loadTemplate($this->filename[$handle]);
+		return $template;
+/*
 		// Recompile page if the original template is newer, otherwise load the compiled version
 		if (!$recompile)
 		{
@@ -436,6 +472,7 @@ class template
 
 		$compile->_tpl_load_file($handle);
 		return false;
+*/
 	}
 
 	/**
@@ -654,10 +691,12 @@ class template
 			$this->files_inherit[$handle] = $this->inherit_root . '/' . $filename;
 		}
 
-		$filename = $this->_tpl_load($handle);
+		$template = $this->_tpl_load($handle);
 
 		if ($include)
 		{
+			$this->twig_print_template($template);
+/*
 			global $user;
 
 			if ($filename)
@@ -666,6 +705,7 @@ class template
 				return;
 			}
 			eval(' ?>' . $this->compiled_code[$handle] . '<?php ');
+*/
 		}
 	}
 
